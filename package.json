@@ -1,0 +1,17 @@
+{
+  "name": "btc-bot-lab",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Paper-trading lab: Jev AI vs simple rules vs a technical-analysis arm on BTC, gold and USD/THB",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0",
+    "@types/node": "^22.0.0"
+  }
+}
