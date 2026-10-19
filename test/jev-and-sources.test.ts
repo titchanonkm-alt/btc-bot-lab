@@ -1,0 +1,99 @@
+import { generateKeyPairSync, createVerify } from "node:crypto";
+import { describe, expect, it } from "vitest";
+import { JEV, makeJevArm } from "../src/arms/jev.js";
+import { closedOnly, coinbaseBtc, twelveData, type Fetcher } from "../src/prices/sources.js";
+import { serviceAccountJwt } from "../src/sheets.js";
+import { series } from "./helpers.js";
+
+const json = (body: unknown, status = 200): Fetcher => async () =>
+  new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+
+const jevReply = (asset: number, cash: number) =>
+  json({ answers: { position: { type: "choice", choice: asset >= cash ? "asset" : "cash", probabilities: { asset, cash } } } });
+
+describe("jev arm", () => {
+  const candles = series(60, 100, 1);
+  const decide = (fetcher: Fetcher, holding = false, apiKey: string | undefined = "k") =>
+    makeJevArm({ fetcher, apiKey, asset: "BTC" }).decide({ candles, holding, state: {} });
+
+  it("buys at 61% and records the entry price", async () => {
+    const d = await decide(jevReply(0.61, 0.39));
+    expect(d).toMatchObject({ target: "asset", state: { entry: candles.at(-1)!.c } });
+  });
+
+  it("stays in cash at 59%", async () => {
+    expect((await decide(jevReply(0.59, 0.41))).target).toBe("cash");
+  });
+
+  it("sells when holding and cash reaches the threshold", async () => {
+    expect((await decide(jevReply(0.4, 0.6), true)).target).toBe("cash");
+  });
+
+  it("keeps the position on an HTTP error and says why", async () => {
+    const d = await decide(json({}, 429), true);
+    expect(d).toMatchObject({ target: "asset", reason: "error: HTTP 429" });
+  });
+
+  it("keeps the position when the key is missing", async () => {
+    expect((await decide(jevReply(0.9, 0.1), false, "")).reason).toMatch(/not set/);
+  });
+
+  it("sends the documented request shape", async () => {
+    let sent: { url: string; body: Record<string, unknown> } | null = null;
+    const spy: Fetcher = async (url, init) => {
+      sent = { url, body: JSON.parse(String(init!.body)) };
+      return jevReply(0.5, 0.5)(url);
+    };
+    await decide(spy);
+    expect(sent!.url).toBe(JEV.endpoint);
+    expect(sent!.body.model).toBe("typesafe-ai/jev");
+    const state = sent!.body.state as { candles: unknown[]; indicators: Record<string, number> };
+    expect(state.candles).toHaveLength(32);
+    expect(Object.keys(state.indicators)).toEqual(["ema20", "ema50", "rsi14"]);
+  });
+});
+
+describe("price sources", () => {
+  const now = Date.UTC(2026, 9, 19, 10, 7);
+
+  it("drops the candle that is still open and sorts oldest first", () => {
+    const open = { t: Date.UTC(2026, 9, 19, 10, 0), o: 1, h: 1, l: 1, c: 1, v: 1 };
+    const closed = { ...open, t: Date.UTC(2026, 9, 19, 9, 45) };
+    expect(closedOnly([open, closed, closed], now)).toEqual([closed]);
+  });
+
+  it("parses Coinbase rows (time, low, high, open, close, volume)", async () => {
+    const t = Date.UTC(2026, 9, 19, 9, 45) / 1000;
+    const c = await coinbaseBtc(json([[t, 10, 20, 12, 18, 5]]), now);
+    expect(c).toEqual([{ t: t * 1000, o: 12, h: 20, l: 10, c: 18, v: 5 }]);
+  });
+
+  it("parses Twelve Data rows as UTC with no volume", async () => {
+    const c = await twelveData(
+      json({ status: "ok", values: [{ datetime: "2026-10-19 09:45:00", open: "1", high: "2", low: "0.5", close: "1.5" }] }),
+      "XAU",
+      "key",
+      now,
+    );
+    expect(c).toEqual([{ t: Date.UTC(2026, 9, 19, 9, 45), o: 1, h: 2, l: 0.5, c: 1.5, v: null }]);
+  });
+
+  it("surfaces a Twelve Data plan error instead of returning nothing", async () => {
+    await expect(twelveData(json({ status: "error", message: "plan" }), "XAU", "k", now)).rejects.toThrow("plan");
+  });
+});
+
+describe("google service account JWT", () => {
+  it("is a verifiable RS256 token for the Sheets scope", () => {
+    const { privateKey, publicKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+    const pem = privateKey.export({ type: "pkcs8", format: "pem" }).toString();
+    const jwt = serviceAccountJwt({ client_email: "bot@x.iam.gserviceaccount.com", private_key: pem }, 1_000);
+    const [h, c, s] = jwt.split(".");
+    const v = createVerify("RSA-SHA256");
+    v.update(`${h}.${c}`);
+    expect(v.verify(publicKey, Buffer.from(s!, "base64url"))).toBe(true);
+    const claims = JSON.parse(Buffer.from(c!, "base64url").toString());
+    expect(claims).toMatchObject({ iss: "bot@x.iam.gserviceaccount.com", exp: 4_600 });
+    expect(claims.scope).toContain("spreadsheets");
+  });
+});

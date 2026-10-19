@@ -4,14 +4,19 @@
   "private": true,
   "type": "module",
   "description": "Paper-trading lab: Jev AI vs simple rules vs a technical-analysis arm on BTC, gold and USD/THB",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "bot": "tsx src/run.ts",
+    "probe": "tsx src/probe.ts"
   },
   "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.23.15",
     "typescript": "^5.6.0",
-    "vitest": "^2.1.0",
-    "@types/node": "^22.0.0"
+    "vitest": "^2.1.0"
   }
 }
