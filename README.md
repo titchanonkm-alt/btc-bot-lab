@@ -19,10 +19,23 @@ Each arm starts with 10,000 THB per asset, all-in or all-out, long only. Costs a
 ## Status
 
 - [x] Indicators, paper ledger, four rule arms (tested)
-- [ ] Price sources
-- [ ] Jev arm
-- [ ] Google Sheet log + state
-- [ ] GitHub Actions every 15 minutes
+- [x] Price sources: BTC from Coinbase (Kraken fallback), gold and USD/THB from Twelve Data
+- [x] Jev arm via Vercel AI Gateway (`POST /v1/evaluate`)
+- [x] Google Sheet log (Runs, Decisions, Trades, Equity) + State
+- [x] GitHub Actions: `bot` every 15 minutes, `probe` to check every service, `test` on push
+- [ ] Secrets set and probe passing
+- [ ] Shakedown, then start the count
+
+## Secrets (repository → Settings → Secrets and variables → Actions)
+
+| Name | What |
+| --- | --- |
+| `AI_GATEWAY_API_KEY` | Vercel AI Gateway key |
+| `MARKET_DATA_KEY` | Twelve Data key |
+| `GOOGLE_SA_JSON` | Google service account key file (whole JSON) |
+| `SHEET_ID` | The Google Sheet's id from its URL |
+
+Run **Actions → probe → Run workflow** to check them. To start a phase, run **bot** with `reset` = `shakedown` or `count`.
 
 ## Run the tests
 
