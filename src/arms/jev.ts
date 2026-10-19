@@ -2,8 +2,14 @@ import { ema, rsi } from "../indicators.js";
 import type { Fetcher } from "../prices/sources.js";
 import type { Arm, ArmContext, Decision } from "../types.js";
 
+/** Decision models on AI Gateway that answer the same question through the same endpoint. */
+export const DECISION_MODELS = {
+  jev: "typesafe-ai/jev",
+  decision1: "microsoft/microsoft-decision-1",
+} as const;
+
 export const JEV = {
-  model: "typesafe-ai/jev",
+  model: DECISION_MODELS.jev,
   endpoint: "https://ai-gateway.vercel.sh/v1/evaluate",
   candlesShown: 32, // 8 hours of 15-minute candles
   threshold: 0.6,
@@ -57,12 +63,19 @@ interface EvaluateResponse {
 }
 
 /**
- * Jev arm. Switches position only when the other side has probability >= 60%.
- * Any error or timeout keeps the current position and records why.
+ * Decision-model arm (Jev or Microsoft Decision-1). Switches position only when the other side
+ * has probability >= 60%. Any error or timeout keeps the current position and records why.
  */
-export function makeJevArm(opts: { fetcher: Fetcher; apiKey: string | undefined; asset: string }): Arm {
+export function makeJevArm(opts: {
+  fetcher: Fetcher;
+  apiKey: string | undefined;
+  asset: string;
+  id?: keyof typeof DECISION_MODELS;
+}): Arm {
+  const id = opts.id ?? "jev";
+  const model = DECISION_MODELS[id];
   return {
-    id: "jev",
+    id,
     async decide(ctx): Promise<Decision> {
       const current = ctx.holding ? "asset" : "cash";
       const keep = (reason: string): Decision => ({ target: current, reason, state: ctx.state });
@@ -72,7 +85,7 @@ export function makeJevArm(opts: { fetcher: Fetcher; apiKey: string | undefined;
           method: "POST",
           headers: { Authorization: `Bearer ${opts.apiKey}`, "Content-Type": "application/json" },
           body: JSON.stringify({
-            model: JEV.model,
+            model,
             state: buildState(ctx, opts.asset),
             questions: { position: QUESTION },
           }),
@@ -87,9 +100,9 @@ export function makeJevArm(opts: { fetcher: Fetcher; apiKey: string | undefined;
         const pct = Math.round(pOther * 100);
         if (pOther >= JEV.threshold) {
           const state: Record<string, number> = other === "asset" ? { entry: ctx.candles.at(-1)!.c } : {};
-          return { target: other, reason: `jev ${other} ${pct}%`, state };
+          return { target: other, reason: `${id} ${other} ${pct}%`, state };
         }
-        return keep(`jev ${other} ${pct}% < 60%`);
+        return keep(`${id} ${other} ${pct}% < 60%`);
       } catch (e) {
         return keep(`error: ${(e as Error).name === "TimeoutError" ? "timeout" : (e as Error).message}`);
       }

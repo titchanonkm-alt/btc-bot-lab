@@ -53,6 +53,21 @@ describe("jev arm", () => {
   });
 });
 
+describe("decision-1 arm", () => {
+  it("uses the same question with Microsoft's model and its own id", async () => {
+    let model = "";
+    const spy: Fetcher = async (url, init) => {
+      model = JSON.parse(String(init!.body)).model;
+      return jevReply(0.7, 0.3)(url);
+    };
+    const arm = makeJevArm({ fetcher: spy, apiKey: "k", asset: "XAU", id: "decision1" });
+    const d = await arm.decide({ candles: series(60, 100, 1), holding: false, state: {} });
+    expect(arm.id).toBe("decision1");
+    expect(model).toBe("microsoft/microsoft-decision-1");
+    expect(d).toMatchObject({ target: "asset", reason: "decision1 asset 70%" });
+  });
+});
+
 describe("price sources", () => {
   const now = Date.UTC(2026, 9, 19, 10, 7);
 
