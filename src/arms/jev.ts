@@ -93,19 +93,33 @@ export function makeJevArm(opts: {
         });
         if (!res.ok) return keep(`error: HTTP ${res.status}`);
         const body = (await res.json()) as EvaluateResponse;
-        const probs = body.answers?.position?.probabilities;
-        const other = current === "asset" ? "cash" : "asset";
-        const pOther = probs?.[other];
-        if (typeof pOther !== "number") return keep("error: no probabilities in response");
-        const pct = Math.round(pOther * 100);
-        if (pOther >= JEV.threshold) {
-          const state: Record<string, number> = other === "asset" ? { entry: ctx.candles.at(-1)!.c } : {};
-          return { target: other, reason: `${id} ${other} ${pct}%`, state };
-        }
-        return keep(`${id} ${other} ${pct}% < 60%`);
+        return decideFromProbabilities(ctx, id, body.answers?.position?.probabilities);
       } catch (e) {
         return keep(`error: ${(e as Error).name === "TimeoutError" ? "timeout" : (e as Error).message}`);
       }
     },
   };
+}
+
+/**
+ * Shared switching rule for every AI arm: move to the other side only when its probability is >= 60%,
+ * otherwise keep the current position. The reason text is what appears in the Decisions tab.
+ */
+export function decideFromProbabilities(
+  ctx: ArmContext,
+  id: string,
+  probs: Record<string, number> | undefined,
+): Decision {
+  const current = ctx.holding ? "asset" : "cash";
+  const other = current === "asset" ? "cash" : "asset";
+  const pOther = probs?.[other];
+  if (typeof pOther !== "number" || !Number.isFinite(pOther)) {
+    return { target: current, reason: "error: no probabilities in response", state: ctx.state };
+  }
+  const pct = Math.round(pOther * 100);
+  if (pOther >= JEV.threshold) {
+    const state: Record<string, number> = other === "asset" ? { entry: ctx.candles.at(-1)!.c } : {};
+    return { target: other, reason: `${id} ${other} ${pct}%`, state };
+  }
+  return { target: current, reason: `${id} ${other} ${pct}% < 60%`, state: ctx.state };
 }

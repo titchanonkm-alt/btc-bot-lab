@@ -2,7 +2,7 @@
  * Manual check of every outside service, run from GitHub Actions with the real secrets.
  * Prints what works and what does not. Never prints a key.
  */
-import { DECISION_MODELS, JEV } from "./arms/jev.js";
+import { GEMINI } from "./arms/gemini.js";
 import { candlesFor } from "./prices/sources.js";
 import type { AssetId } from "./types.js";
 
@@ -21,20 +21,31 @@ for (const asset of ["BTC", "XAU", "USDTHB"] as AssetId[]) {
   }
 }
 
-for (const [name, model] of Object.entries(DECISION_MODELS)) try {
-  const res = await fetch(JEV.endpoint, {
+// Gemini: which Flash-Lite models this key can use, then one tiny call to the configured model.
+const gKey = env.GEMINI_API_KEY ?? "";
+try {
+  const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=200", {
+    headers: { "x-goog-api-key": gKey },
+  });
+  const body = (await res.json()) as { models?: { name: string }[]; error?: { message?: string } };
+  const lite = (body.models ?? []).map((m) => m.name.replace("models/", "")).filter((n) => n.includes("flash-lite"));
+  line("gemini models", res.ok, res.ok ? `flash-lite: ${lite.join(", ") || "none"}` : `HTTP ${res.status} ${body.error?.message ?? ""}`);
+} catch (e) {
+  line("gemini models", false, (e as Error).message);
+}
+try {
+  const res = await fetch(GEMINI.endpoint(GEMINI.model), {
     method: "POST",
-    headers: { Authorization: `Bearer ${env.AI_GATEWAY_API_KEY ?? ""}`, "Content-Type": "application/json" },
+    headers: { "x-goog-api-key": gKey, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model,
-      state: "Probe from btc-bot-lab.",
-      questions: { ok: { type: "boolean", instructions: "Is this a probe message?" } },
+      contents: [{ role: "user", parts: [{ text: "Probe from btc-bot-lab. Reply with the word ok." }] }],
+      generationConfig: { maxOutputTokens: 5 },
     }),
   });
   const body = await res.text();
-  line(`${name} via Vercel`, res.ok, res.ok ? body.slice(0, 160) : `HTTP ${res.status} ${body.slice(0, 160)}`);
+  line(`gemini ${GEMINI.model}`, res.ok, res.ok ? "answered" : `HTTP ${res.status} ${body.slice(0, 160)}`);
 } catch (e) {
-  line(`${name} via Vercel`, false, (e as Error).message);
+  line(`gemini ${GEMINI.model}`, false, (e as Error).message);
 }
 
 line("google service account", Boolean(env.GOOGLE_SA_JSON), env.GOOGLE_SA_JSON ? "secret present" : "GOOGLE_SA_JSON not set");
