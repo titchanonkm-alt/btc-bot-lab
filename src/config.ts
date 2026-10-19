@@ -10,5 +10,5 @@ export const CONFIG = {
   /** Cost per side, as a fraction. Gold and USD/THB are placeholders until the shakedown measures real spreads. */
   costPerSide: { BTC: 0.0015, XAU: 0.0003, USDTHB: 0.0003 } satisfies Record<AssetId, number>,
   /** Arms run in this order; the ids appear in every Sheet row. */
-  arms: ["ema", "rsi", "ta", "jev", "hold"],
+  arms: ["ema", "rsi", "ta", "jev", "decision1", "hold"],
 };

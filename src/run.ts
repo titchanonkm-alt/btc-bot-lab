@@ -56,7 +56,8 @@ function armsFor(asset: AssetId, fetcher: Fetcher, aiKey: string | undefined): A
     rsi: rsiArm,
     ta: taArm,
     hold: holdArm,
-    jev: makeJevArm({ fetcher, apiKey: aiKey, asset }),
+    jev: makeJevArm({ fetcher, apiKey: aiKey, asset, id: "jev" }),
+    decision1: makeJevArm({ fetcher, apiKey: aiKey, asset, id: "decision1" }),
   };
   return CONFIG.arms.map((id) => all[id]!);
 }

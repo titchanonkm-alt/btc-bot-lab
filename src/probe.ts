@@ -2,7 +2,7 @@
  * Manual check of every outside service, run from GitHub Actions with the real secrets.
  * Prints what works and what does not. Never prints a key.
  */
-import { JEV } from "./arms/jev.js";
+import { DECISION_MODELS, JEV } from "./arms/jev.js";
 import { candlesFor } from "./prices/sources.js";
 import type { AssetId } from "./types.js";
 
@@ -21,20 +21,20 @@ for (const asset of ["BTC", "XAU", "USDTHB"] as AssetId[]) {
   }
 }
 
-try {
+for (const [name, model] of Object.entries(DECISION_MODELS)) try {
   const res = await fetch(JEV.endpoint, {
     method: "POST",
     headers: { Authorization: `Bearer ${env.AI_GATEWAY_API_KEY ?? ""}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: JEV.model,
+      model,
       state: "Probe from btc-bot-lab.",
       questions: { ok: { type: "boolean", instructions: "Is this a probe message?" } },
     }),
   });
   const body = await res.text();
-  line("jev via Vercel", res.ok, res.ok ? body.slice(0, 160) : `HTTP ${res.status} ${body.slice(0, 160)}`);
+  line(`${name} via Vercel`, res.ok, res.ok ? body.slice(0, 160) : `HTTP ${res.status} ${body.slice(0, 160)}`);
 } catch (e) {
-  line("jev via Vercel", false, (e as Error).message);
+  line(`${name} via Vercel`, false, (e as Error).message);
 }
 
 line("google service account", Boolean(env.GOOGLE_SA_JSON), env.GOOGLE_SA_JSON ? "secret present" : "GOOGLE_SA_JSON not set");
