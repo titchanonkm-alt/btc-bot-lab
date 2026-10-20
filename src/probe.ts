@@ -2,7 +2,7 @@
  * Manual check of every outside service, run from GitHub Actions with the real secrets.
  * Prints what works and what does not. Never prints a key.
  */
-import { GEMINI } from "./arms/gemini.js";
+import { GEMINI, makeGeminiArm } from "./arms/gemini.js";
 import { candlesFor } from "./prices/sources.js";
 import type { AssetId } from "./types.js";
 
@@ -46,6 +46,16 @@ try {
   line(`gemini ${GEMINI.model}`, res.ok, res.ok ? "answered" : `HTTP ${res.status} ${body.slice(0, 160)}`);
 } catch (e) {
   line(`gemini ${GEMINI.model}`, false, (e as Error).message);
+}
+
+// A full-size decision on real BTC candles, timed, exactly as the bot makes it.
+try {
+  const candles = await candlesFor("BTC", { fetcher: fetch, now, twelveDataKey: env.MARKET_DATA_KEY });
+  const t0 = Date.now();
+  const d = await makeGeminiArm({ fetcher: fetch, apiKey: gKey, asset: "BTC" }).decide({ candles, holding: false, state: {} });
+  line("gemini real decision", !d.reason.startsWith("error"), `${d.target} (${d.reason}) in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
+} catch (e) {
+  line("gemini real decision", false, (e as Error).message);
 }
 
 line("google service account", Boolean(env.GOOGLE_SA_JSON), env.GOOGLE_SA_JSON ? "secret present" : "GOOGLE_SA_JSON not set");

@@ -1,6 +1,6 @@
 import type { Fetcher } from "../prices/sources.js";
 import type { Arm, ArmContext, Decision } from "../types.js";
-import { JEV, QUESTION, buildState, decideFromProbabilities } from "./jev.js";
+import { QUESTION, buildState, decideFromProbabilities } from "./jev.js";
 
 /**
  * Google Gemini on the free tier of Google AI Studio. Flash-Lite allows about 500 requests a day,
@@ -8,6 +8,8 @@ import { JEV, QUESTION, buildState, decideFromProbabilities } from "./jev.js";
  */
 export const GEMINI = {
   model: "gemini-3.5-flash-lite",
+  /** The full market state is ~2.5k tokens; 10 s was too short in the first shakedown run. */
+  timeoutMs: 30_000,
   endpoint: (model: string) => `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
 };
 
@@ -49,16 +51,26 @@ export function makeGeminiArm(opts: { fetcher: Fetcher; apiKey: string | undefin
       const keep = (reason: string): Decision => ({ target: ctx.holding ? "asset" : "cash", reason, state: ctx.state });
       if (!opts.apiKey) return keep("error: GEMINI_API_KEY not set");
       try {
-        const res = await opts.fetcher(GEMINI.endpoint(model), {
-          method: "POST",
-          headers: { "x-goog-api-key": opts.apiKey, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-            contents: [{ role: "user", parts: [{ text: JSON.stringify(buildState(ctx, opts.asset)) }] }],
-            generationConfig: { temperature: 0, responseMimeType: "application/json", responseSchema: RESPONSE_SCHEMA },
-          }),
-          signal: AbortSignal.timeout(JEV.timeoutMs),
-        });
+        const call = (thinking: boolean) =>
+          opts.fetcher(GEMINI.endpoint(model), {
+            method: "POST",
+            headers: { "x-goog-api-key": opts.apiKey!, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+              contents: [{ role: "user", parts: [{ text: JSON.stringify(buildState(ctx, opts.asset)) }] }],
+              generationConfig: {
+                temperature: 0,
+                responseMimeType: "application/json",
+                responseSchema: RESPONSE_SCHEMA,
+                // Keep thinking short so a 15-minute decision returns in seconds.
+                ...(thinking ? { thinkingConfig: { thinkingLevel: "minimal" } } : {}),
+              },
+            }),
+            signal: AbortSignal.timeout(GEMINI.timeoutMs),
+          });
+        let res = await call(true);
+        // A model that rejects the thinking setting answers 400; ask once more without it.
+        if (res.status === 400) res = await call(false);
         if (!res.ok) return keep(`error: HTTP ${res.status}`);
         const body = (await res.json()) as GeminiResponse;
         const text = body.candidates?.[0]?.content?.parts?.[0]?.text;

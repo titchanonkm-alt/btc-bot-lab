@@ -162,3 +162,20 @@ describe("gemini arm", () => {
     expect(toProbabilities(JSON.stringify({ choice: "cash", confidence: 1.4 }))).toEqual({ asset: 0, cash: 1 });
   });
 });
+
+describe("gemini arm retries", () => {
+  it("asks again without the thinking setting when the model answers 400", async () => {
+    const bodies: any[] = [];
+    const f: Fetcher = async (_url, init) => {
+      bodies.push(JSON.parse(String(init!.body)));
+      if (bodies.length === 1) return new Response("{}", { status: 400 });
+      return new Response(
+        JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify({ choice: "asset", confidence: 0.8 }) }] } }] }),
+      );
+    };
+    const d = await makeGeminiArm({ fetcher: f, apiKey: "k", asset: "BTC" }).decide({ candles: series(60, 100, 1), holding: false, state: {} });
+    expect(bodies[0].generationConfig.thinkingConfig).toBeDefined();
+    expect(bodies[1].generationConfig.thinkingConfig).toBeUndefined();
+    expect(d.target).toBe("asset");
+  });
+});
