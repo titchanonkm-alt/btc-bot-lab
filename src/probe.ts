@@ -48,12 +48,15 @@ try {
   line(`gemini ${GEMINI.model}`, false, (e as Error).message);
 }
 
-// A full-size decision on real BTC candles, timed, exactly as the bot makes it.
+// Full-size decisions on real BTC candles, timed, for each Flash-Lite candidate (no retries).
 try {
   const candles = await candlesFor("BTC", { fetcher: fetch, now, twelveDataKey: env.MARKET_DATA_KEY });
-  const t0 = Date.now();
-  const d = await makeGeminiArm({ fetcher: fetch, apiKey: gKey, asset: "BTC" }).decide({ candles, holding: false, state: {} });
-  line("gemini real decision", !d.reason.startsWith("error"), `${d.target} (${d.reason}) in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
+  for (const model of [GEMINI.model, "gemini-3.1-flash-lite", "gemini-flash-lite-latest"]) {
+    const t0 = Date.now();
+    const arm = makeGeminiArm({ fetcher: fetch, apiKey: gKey, asset: "BTC", model, retryDelaysMs: [] });
+    const d = await arm.decide({ candles, holding: false, state: {} });
+    line(`decision ${model}`, !d.reason.startsWith("error"), `${d.reason} in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
+  }
 } catch (e) {
   line("gemini real decision", false, (e as Error).message);
 }
