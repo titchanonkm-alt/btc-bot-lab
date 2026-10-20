@@ -210,3 +210,18 @@ describe("gemini arm on an overloaded server", () => {
     expect(calls).toBe(1);
   });
 });
+
+describe("gemini arm timeouts", () => {
+  it("retries a timeout once and reports it if it happens again", async () => {
+    let calls = 0;
+    const f: Fetcher = async () => {
+      calls++;
+      throw Object.assign(new Error("timed out"), { name: "TimeoutError" });
+    };
+    const d = await makeGeminiArm({ fetcher: f, apiKey: "k", asset: "BTC", retryDelaysMs: [0] }).decide({
+      candles: series(60, 100, 1), holding: true, state: {},
+    });
+    expect(calls).toBe(2);
+    expect(d).toMatchObject({ target: "asset", reason: "error: timeout after 2 tries" });
+  });
+});

@@ -8,10 +8,10 @@ import { QUESTION, buildState, decideFromProbabilities } from "./jev.js";
  */
 export const GEMINI = {
   model: "gemini-3.5-flash-lite",
-  /** The full market state is ~2.5k tokens; 10 s was too short in the first shakedown run. */
-  timeoutMs: 30_000,
+  /** Free-tier latency swings a lot: 10 s and 30 s both timed out in the shakedown. */
+  timeoutMs: 45_000,
   /** Free-tier Flash-Lite answers 503 (overloaded) or 429 now and then: wait and ask again. */
-  retryDelaysMs: [5_000, 15_000],
+  retryDelaysMs: [5_000],
   endpoint: (model: string) => `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
 };
 
@@ -76,20 +76,29 @@ export function makeGeminiArm(opts: {
             }),
             signal: AbortSignal.timeout(GEMINI.timeoutMs),
           });
-        const attempt = async () => {
-          const first = await call(true);
-          // A model that rejects the thinking setting answers 400; ask once more without it.
-          return first.status === 400 ? call(false) : first;
+        const attempt = async (): Promise<Response> => {
+          try {
+            const first = await call(true);
+            // A model that rejects the thinking setting answers 400; ask once more without it.
+            return first.status === 400 ? await call(false) : first;
+          } catch (e) {
+            // A timeout is retried like an overload; anything else is a real error.
+            if ((e as Error).name === "TimeoutError") return new Response(null, { status: 504 });
+            throw e;
+          }
         };
         let res = await attempt();
         let tries = 1;
         for (const delay of opts.retryDelaysMs ?? GEMINI.retryDelaysMs) {
-          if (res.status !== 503 && res.status !== 429 && res.status !== 500) break;
+          if (![429, 500, 503, 504].includes(res.status)) break;
           await new Promise((r) => setTimeout(r, delay));
           res = await attempt();
           tries++;
         }
-        if (!res.ok) return keep(`error: HTTP ${res.status}${tries > 1 ? ` after ${tries} tries` : ""}`);
+        if (!res.ok) {
+          const what = res.status === 504 ? "timeout" : `HTTP ${res.status}`;
+          return keep(`error: ${what}${tries > 1 ? ` after ${tries} tries` : ""}`);
+        }
         const body = (await res.json()) as GeminiResponse;
         const text = body.candidates?.[0]?.content?.parts?.[0]?.text;
         return decideFromProbabilities(ctx, "gemini", toProbabilities(text));
