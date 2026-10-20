@@ -122,7 +122,7 @@ describe("gemini arm", () => {
       { status },
     );
   const decide = (f: Fetcher, holding = false, apiKey = "k") =>
-    makeGeminiArm({ fetcher: f, apiKey, asset: "BTC" }).decide({ candles, holding, state: {} });
+    makeGeminiArm({ fetcher: f, apiKey, asset: "BTC", retryDelaysMs: [] }).decide({ candles, holding, state: {} });
 
   it("buys when it picks asset with 70% confidence", async () => {
     expect(await decide(reply("asset", 0.7))).toMatchObject({ target: "asset", reason: "gemini asset 70%" });
@@ -177,5 +177,36 @@ describe("gemini arm retries", () => {
     expect(bodies[0].generationConfig.thinkingConfig).toBeDefined();
     expect(bodies[1].generationConfig.thinkingConfig).toBeUndefined();
     expect(d.target).toBe("asset");
+  });
+});
+
+describe("gemini arm on an overloaded server", () => {
+  const ok = JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify({ choice: "asset", confidence: 0.9 }) }] } }] });
+  const run = async (statuses: number[]) => {
+    let i = 0;
+    const f: Fetcher = async () => {
+      const status = statuses[i++] ?? 200;
+      return new Response(status === 200 ? ok : "{}", { status });
+    };
+    const arm = makeGeminiArm({ fetcher: f, apiKey: "k", asset: "BTC", retryDelaysMs: [0, 0] });
+    const d = await arm.decide({ candles: series(60, 100, 1), holding: false, state: {} });
+    return { d, calls: i };
+  };
+
+  it("retries a 503 and uses the later answer", async () => {
+    const { d, calls } = await run([503, 200]);
+    expect(calls).toBe(2);
+    expect(d.target).toBe("asset");
+  });
+
+  it("gives up after three tries and keeps the position", async () => {
+    const { d, calls } = await run([503, 503, 503]);
+    expect(calls).toBe(3);
+    expect(d).toMatchObject({ target: "cash", reason: "error: HTTP 503 after 3 tries" });
+  });
+
+  it("does not retry a 403", async () => {
+    const { calls } = await run([403]);
+    expect(calls).toBe(1);
   });
 });
