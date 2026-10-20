@@ -10,6 +10,8 @@ export const GEMINI = {
   model: "gemini-3.5-flash-lite",
   /** The full market state is ~2.5k tokens; 10 s was too short in the first shakedown run. */
   timeoutMs: 30_000,
+  /** Free-tier Flash-Lite answers 503 (overloaded) or 429 now and then: wait and ask again. */
+  retryDelaysMs: [5_000, 15_000],
   endpoint: (model: string) => `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
 };
 
@@ -43,7 +45,13 @@ export function toProbabilities(text: string | undefined): Record<string, number
   return parsed.choice === "asset" ? { asset: p, cash: 1 - p } : { asset: 1 - p, cash: p };
 }
 
-export function makeGeminiArm(opts: { fetcher: Fetcher; apiKey: string | undefined; asset: string; model?: string }): Arm {
+export function makeGeminiArm(opts: {
+  fetcher: Fetcher;
+  apiKey: string | undefined;
+  asset: string;
+  model?: string;
+  retryDelaysMs?: number[];
+}): Arm {
   const model = opts.model ?? GEMINI.model;
   return {
     id: "gemini",
@@ -68,10 +76,20 @@ export function makeGeminiArm(opts: { fetcher: Fetcher; apiKey: string | undefin
             }),
             signal: AbortSignal.timeout(GEMINI.timeoutMs),
           });
-        let res = await call(true);
-        // A model that rejects the thinking setting answers 400; ask once more without it.
-        if (res.status === 400) res = await call(false);
-        if (!res.ok) return keep(`error: HTTP ${res.status}`);
+        const attempt = async () => {
+          const first = await call(true);
+          // A model that rejects the thinking setting answers 400; ask once more without it.
+          return first.status === 400 ? call(false) : first;
+        };
+        let res = await attempt();
+        let tries = 1;
+        for (const delay of opts.retryDelaysMs ?? GEMINI.retryDelaysMs) {
+          if (res.status !== 503 && res.status !== 429 && res.status !== 500) break;
+          await new Promise((r) => setTimeout(r, delay));
+          res = await attempt();
+          tries++;
+        }
+        if (!res.ok) return keep(`error: HTTP ${res.status}${tries > 1 ? ` after ${tries} tries` : ""}`);
         const body = (await res.json()) as GeminiResponse;
         const text = body.candidates?.[0]?.content?.parts?.[0]?.text;
         return decideFromProbabilities(ctx, "gemini", toProbabilities(text));
