@@ -1,18 +1,17 @@
 # btc-bot-lab
 
-A paper-trading experiment: does an AI decision model (**Jev**) trade better than simple rules, a rule-based technical analyst, or just buying and holding?
+A paper-trading experiment: does an AI model (**Google Gemini Flash-Lite**, free tier) trade better than simple rules, a rule-based technical analyst, or just buying and holding?
 
 No real money. Every trade is simulated on real market prices and logged to a Google Sheet so anyone can check the numbers.
 
-## The six arms (per asset: BTC, gold XAU/USD, USD/THB)
+## The five arms (per asset: BTC, gold XAU/USD, USD/THB)
 
 | Arm | Rule |
 | --- | --- |
 | EMA | Hold while EMA 20 is above EMA 50 (15-minute closes) |
 | RSI | Buy when RSI 14 < 30, sell when > 70 |
 | Technical analyst | 1h uptrend + pullback (24h low or RSI reclaims 40) + green candle + volume, stop loss and 2R target |
-| Jev (AI) | Jev decides hold/cash from the last 8 hours of candles + indicators; acts only at ≥ 60% confidence |
-| Decision-1 (AI) | Same question and data as Jev, answered by Microsoft Decision-1 |
+| Gemini (AI) | Gemini Flash-Lite decides hold/cash from the last 8 hours of candles + indicators; acts only at ≥ 60% confidence |
 | Buy and hold | Buy once, never sell — the yardstick |
 
 Each arm starts with 10,000 THB per asset, all-in or all-out, long only. Costs are simulated twice: with realistic costs (BTC 0.15% per side; gold and FX at observed spread) and at zero cost as a shadow column.
@@ -21,7 +20,8 @@ Each arm starts with 10,000 THB per asset, all-in or all-out, long only. Costs a
 
 - [x] Indicators, paper ledger, four rule arms (tested)
 - [x] Price sources: BTC from Coinbase (Kraken fallback), gold and USD/THB from Twelve Data
-- [x] Jev arm via Vercel AI Gateway (`POST /v1/evaluate`)
+- [x] Gemini arm via Google AI Studio (free tier, about 500 requests/day; the bot uses 288)
+- [x] Jev and Microsoft Decision-1 arms are in the code but switched off: they need paid Vercel AI Gateway credit (minimum $10)
 - [x] Google Sheet log (Runs, Decisions, Trades, Equity) + State
 - [x] GitHub Actions: `bot` every 15 minutes, `probe` to check every service, `test` on push
 - [ ] Secrets set and probe passing
@@ -31,7 +31,8 @@ Each arm starts with 10,000 THB per asset, all-in or all-out, long only. Costs a
 
 | Name | What |
 | --- | --- |
-| `AI_GATEWAY_API_KEY` | Vercel AI Gateway key |
+| `GEMINI_API_KEY` | Google AI Studio key (free) |
+| `AI_GATEWAY_API_KEY` | Vercel AI Gateway key (only if Jev/Decision-1 are switched on) |
 | `MARKET_DATA_KEY` | Twelve Data key |
 | `GOOGLE_SA_JSON` | Google service account key file (whole JSON) |
 | `SHEET_ID` | The Google Sheet's id from its URL |

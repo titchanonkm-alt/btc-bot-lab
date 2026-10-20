@@ -1,5 +1,6 @@
 import { generateKeyPairSync, createVerify } from "node:crypto";
 import { describe, expect, it } from "vitest";
+import { GEMINI, makeGeminiArm, toProbabilities } from "../src/arms/gemini.js";
 import { JEV, makeJevArm } from "../src/arms/jev.js";
 import { closedOnly, coinbaseBtc, twelveData, type Fetcher } from "../src/prices/sources.js";
 import { serviceAccountJwt } from "../src/sheets.js";
@@ -110,5 +111,54 @@ describe("google service account JWT", () => {
     const claims = JSON.parse(Buffer.from(c!, "base64url").toString());
     expect(claims).toMatchObject({ iss: "bot@x.iam.gserviceaccount.com", exp: 4_600 });
     expect(claims.scope).toContain("spreadsheets");
+  });
+});
+
+describe("gemini arm", () => {
+  const candles = series(60, 100, 1);
+  const reply = (choice: string, confidence: number, status = 200): Fetcher => async () =>
+    new Response(
+      JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify({ choice, confidence }) }] } }] }),
+      { status },
+    );
+  const decide = (f: Fetcher, holding = false, apiKey = "k") =>
+    makeGeminiArm({ fetcher: f, apiKey, asset: "BTC" }).decide({ candles, holding, state: {} });
+
+  it("buys when it picks asset with 70% confidence", async () => {
+    expect(await decide(reply("asset", 0.7))).toMatchObject({ target: "asset", reason: "gemini asset 70%" });
+  });
+
+  it("stays in cash below the 60% threshold", async () => {
+    expect((await decide(reply("asset", 0.55))).target).toBe("cash");
+  });
+
+  it("reads a confident cash answer as a sell when holding", async () => {
+    expect((await decide(reply("cash", 0.8), true)).target).toBe("cash");
+  });
+
+  it("keeps the position on quota errors", async () => {
+    expect(await decide(reply("asset", 0.9, 429), true)).toMatchObject({ target: "asset", reason: "error: HTTP 429" });
+  });
+
+  it("keeps the position when the key is missing", async () => {
+    expect((await decide(reply("asset", 0.9), false, "")).reason).toMatch(/GEMINI_API_KEY not set/);
+  });
+
+  it("asks for JSON with the same market state Jev gets", async () => {
+    let sent: { url: string; headers: Record<string, string>; body: any } | null = null;
+    const spy: Fetcher = async (url, init) => {
+      sent = { url, headers: init!.headers as Record<string, string>, body: JSON.parse(String(init!.body)) };
+      return reply("cash", 0.5)(url);
+    };
+    await decide(spy);
+    expect(sent!.url).toBe(GEMINI.endpoint(GEMINI.model));
+    expect(sent!.headers["x-goog-api-key"]).toBe("k");
+    expect(sent!.body.generationConfig.responseMimeType).toBe("application/json");
+    expect(JSON.parse(sent!.body.contents[0].parts[0].text).candles).toHaveLength(32);
+  });
+
+  it("rejects malformed answers", () => {
+    expect(toProbabilities(JSON.stringify({ choice: "maybe", confidence: 1 }))).toBeUndefined();
+    expect(toProbabilities(JSON.stringify({ choice: "cash", confidence: 1.4 }))).toEqual({ asset: 0, cash: 1 });
   });
 });

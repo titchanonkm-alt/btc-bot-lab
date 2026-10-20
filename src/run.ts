@@ -1,3 +1,4 @@
+import { makeGeminiArm } from "./arms/gemini.js";
 import { makeJevArm } from "./arms/jev.js";
 import { emaArm, holdArm, rsiArm, taArm } from "./arms/rules.js";
 import { CONFIG } from "./config.js";
@@ -34,7 +35,7 @@ export async function main(env: NodeJS.ProcessEnv, fetcher: Fetcher = fetch): Pr
     if (!book) continue;
     try {
       const candles = await candlesFor(asset, deps);
-      const arms = armsFor(asset, fetcher, env.AI_GATEWAY_API_KEY);
+      const arms = armsFor(asset, fetcher, env);
       state.assets[asset] = await stepAsset(asset, candles, book, arms, state.phase, runAt, rows);
     } catch (e) {
       // One asset failing never stops the others; the gap shows up as missed candles next run.
@@ -50,7 +51,8 @@ export async function main(env: NodeJS.ProcessEnv, fetcher: Fetcher = fetch): Pr
   return rows;
 }
 
-function armsFor(asset: AssetId, fetcher: Fetcher, aiKey: string | undefined): Arm[] {
+function armsFor(asset: AssetId, fetcher: Fetcher, env: NodeJS.ProcessEnv): Arm[] {
+  const aiKey = env.AI_GATEWAY_API_KEY;
   const all: Record<string, Arm> = {
     ema: emaArm,
     rsi: rsiArm,
@@ -58,6 +60,7 @@ function armsFor(asset: AssetId, fetcher: Fetcher, aiKey: string | undefined): A
     hold: holdArm,
     jev: makeJevArm({ fetcher, apiKey: aiKey, asset, id: "jev" }),
     decision1: makeJevArm({ fetcher, apiKey: aiKey, asset, id: "decision1" }),
+    gemini: makeGeminiArm({ fetcher, apiKey: env.GEMINI_API_KEY, asset }),
   };
   return CONFIG.arms.map((id) => all[id]!);
 }
