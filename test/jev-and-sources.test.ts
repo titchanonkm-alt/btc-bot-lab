@@ -36,7 +36,7 @@ describe("jev arm", () => {
   });
 
   it("keeps the position when the key is missing", async () => {
-    expect((await decide(jevReply(0.9, 0.1), false, "")).reason).toMatch(/not set/);
+    expect((await decide(jevReply(0.9, 0.1), false, "")).reason).toBe("error: OPENROUTER_API_KEY not set");
   });
 
   it("sends the documented request shape", async () => {
@@ -47,7 +47,7 @@ describe("jev arm", () => {
     };
     await decide(spy);
     expect(sent!.url).toBe(JEV.endpoint);
-    expect(sent!.body.model).toBe("typesafe-ai/jev");
+    expect(sent!.body.model).toBe("typesafe/jev-1.14");
     const state = sent!.body.state as { candles: unknown[]; indicators: Record<string, number> };
     expect(state.candles).toHaveLength(32);
     expect(Object.keys(state.indicators)).toEqual(["ema20", "ema50", "rsi14"]);
@@ -61,10 +61,13 @@ describe("decision-1 arm", () => {
       model = JSON.parse(String(init!.body)).model;
       return jevReply(0.7, 0.3)(url);
     };
-    const arm = makeJevArm({ fetcher: spy, apiKey: "k", asset: "XAU", id: "decision1" });
+    let url = "";
+    const spyUrl: Fetcher = async (u, init) => { url = u; return spy(u, init); };
+    const arm = makeJevArm({ fetcher: spyUrl, apiKey: "k", asset: "XAU", id: "decision1" });
     const d = await arm.decide({ candles: series(60, 100, 1), holding: false, state: {} });
     expect(arm.id).toBe("decision1");
     expect(model).toBe("microsoft/microsoft-decision-1");
+    expect(url).toBe("https://ai-gateway.vercel.sh/v1/evaluate");
     expect(d).toMatchObject({ target: "asset", reason: "decision1 asset 70%" });
   });
 });

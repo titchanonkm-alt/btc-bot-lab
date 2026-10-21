@@ -4,13 +4,14 @@ A paper-trading experiment: does an AI model (**Google Gemini Flash-Lite**, free
 
 No real money. Every trade is simulated on real market prices and logged to a Google Sheet so anyone can check the numbers.
 
-## The five arms (per asset: BTC, gold XAU/USD, USD/THB)
+## The six arms (per asset: BTC, gold XAU/USD, USD/THB)
 
 | Arm | Rule |
 | --- | --- |
 | EMA | Hold while EMA 20 is above EMA 50 (15-minute closes) |
 | RSI | Buy when RSI 14 < 30, sell when > 70 |
 | Technical analyst | 1h uptrend + pullback (24h low or RSI reclaims 40) + green candle + volume, stop loss and 2R target |
+| Jev (AI) | TypeSafe's decision model via OpenRouter (`typesafe/jev-1.14`); same question, data and 60% rule as Gemini |
 | Gemini (AI) | Gemini Flash-Lite decides hold/cash from the last 8 hours of candles + indicators; acts only at ≥ 60% confidence |
 | Buy and hold | Buy once, never sell — the yardstick |
 
@@ -32,7 +33,8 @@ Each arm starts with 10,000 THB per asset, all-in or all-out, long only. Costs a
 | Name | What |
 | --- | --- |
 | `GEMINI_API_KEY` | Google AI Studio key (free) |
-| `AI_GATEWAY_API_KEY` | Vercel AI Gateway key (only if Jev/Decision-1 are switched on) |
+| `OPENROUTER_API_KEY` | OpenRouter key for Jev |
+| `AI_GATEWAY_API_KEY` | Vercel AI Gateway key (only for Decision-1, switched off) |
 | `MARKET_DATA_KEY` | Twelve Data key |
 | `GOOGLE_SA_JSON` | Google service account key file (whole JSON) |
 | `SHEET_ID` | The Google Sheet's id from its URL |

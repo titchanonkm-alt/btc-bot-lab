@@ -2,18 +2,25 @@ import { ema, rsi } from "../indicators.js";
 import type { Fetcher } from "../prices/sources.js";
 import type { Arm, ArmContext, Decision } from "../types.js";
 
-/** Decision models on AI Gateway that answer the same question through the same endpoint. */
+/** Decision models that answer the same question through the same request shape. */
 export const DECISION_MODELS = {
-  jev: "typesafe-ai/jev",
+  // OpenRouter Decisions API; version pinned so the model cannot change during the count.
+  jev: "typesafe/jev-1.14",
+  // Vercel AI Gateway only (needs paid Vercel credit); kept for reference, not in CONFIG.arms.
   decision1: "microsoft/microsoft-decision-1",
+} as const;
+
+export const ENDPOINTS = {
+  openrouter: "https://openrouter.ai/api/alpha/decisions",
+  vercel: "https://ai-gateway.vercel.sh/v1/evaluate",
 } as const;
 
 export const JEV = {
   model: DECISION_MODELS.jev,
-  endpoint: "https://ai-gateway.vercel.sh/v1/evaluate",
+  endpoint: ENDPOINTS.openrouter,
   candlesShown: 32, // 8 hours of 15-minute candles
   threshold: 0.6,
-  timeoutMs: 10_000,
+  timeoutMs: 20_000,
 };
 
 /** What Jev sees: the last 8 hours, the same indicators the rule arms use, and the current position. */
@@ -71,17 +78,23 @@ export function makeJevArm(opts: {
   apiKey: string | undefined;
   asset: string;
   id?: keyof typeof DECISION_MODELS;
+  /** Where to send the request; Jev goes through OpenRouter, Decision-1 only exists on Vercel. */
+  endpoint?: string;
+  /** Name of the secret, used in the error when the key is missing. */
+  keyName?: string;
 }): Arm {
   const id = opts.id ?? "jev";
   const model = DECISION_MODELS[id];
+  const endpoint = opts.endpoint ?? (id === "jev" ? ENDPOINTS.openrouter : ENDPOINTS.vercel);
+  const keyName = opts.keyName ?? (id === "jev" ? "OPENROUTER_API_KEY" : "AI_GATEWAY_API_KEY");
   return {
     id,
     async decide(ctx): Promise<Decision> {
       const current = ctx.holding ? "asset" : "cash";
       const keep = (reason: string): Decision => ({ target: current, reason, state: ctx.state });
-      if (!opts.apiKey) return keep("error: AI_GATEWAY_API_KEY not set");
+      if (!opts.apiKey) return keep(`error: ${keyName} not set`);
       try {
-        const res = await opts.fetcher(JEV.endpoint, {
+        const res = await opts.fetcher(endpoint, {
           method: "POST",
           headers: { Authorization: `Bearer ${opts.apiKey}`, "Content-Type": "application/json" },
           body: JSON.stringify({

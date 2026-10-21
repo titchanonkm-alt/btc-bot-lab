@@ -38,7 +38,7 @@ meaning (up/down, which arm).
 | `--hot` accent | `#ff5b1f` | `#ff5b1f` |
 
 Arm colours (same arm = same colour everywhere: dots, lines, markers, names):
-`gemini #ff5b1f` · `ema #1f8fcf` (dark `#4cc9f0`) · `rsi #8a63e8` (dark `#b59bff`) ·
+`gemini #ff5b1f` · `jev #0f9f94` (dark `#2dd4bf`) · `ema #1f8fcf` (dark `#4cc9f0`) · `rsi #8a63e8` (dark `#b59bff`) ·
 `ta #d79a00` (dark `#ffd166`) · `hold #8c8a82` (dark `#a3a29a`).
 Asset dots: BTC `#f7931a` · gold `#d4a72c` · USD/THB `#2e7d5b`.
 
@@ -62,7 +62,8 @@ Dark mode follows the system setting (`prefers-color-scheme`); light is the defa
 - **Tag:** small radius-5 label; "ถือ" uses `--up-bg`/`--up`, "เงินสด" uses `--soft`/`--dim`.
 - **P/L chip:** mono, radius 6, `--up-bg`/`--down-bg` background with matching text, sign `+` / `−`.
 - **Arm marker:** 10px rounded square in the arm colour before the arm name.
-- **"Gemini คิดว่า" box:** soft orange→violet gradient, radius 12, one bold line with an orange dot.
+- **"AI คิดว่า" box:** soft orange→violet gradient, radius 12; one small label + one bold line per AI arm
+  (Gemini, Jev), each with a dot in the arm colour.
 - Rows inside cards are separated by 1px `--line` top borders, never zebra stripes.
 
 ## Charts
@@ -74,7 +75,7 @@ Dark mode follows the system setting (`prefers-color-scheme`); light is the defa
 - **Price chart:** 15-minute candlesticks, `--up`/`--down`, no borders, height 300px (260 mobile).
   Buy = green up-arrow below the bar labelled "ซื้อ"; sell = red down-arrow above, "ขาย"; one arm at a time,
   chosen with chips under the chart (default Gemini).
-- **Equity chart:** one line per arm in its colour, Gemini 3px, others 2px, buy-and-hold dashed grey;
+- **Equity chart:** one line per arm in its colour, AI arms (Gemini, Jev) 3px, others 2px, buy-and-hold dashed grey;
   no last-value labels; THB price formatter `฿10,000`; height 230px.
 
 ## Numbers
@@ -87,9 +88,9 @@ Dark mode follows the system setting (`prefers-color-scheme`); light is the defa
 ## Do / don't
 
 - Do keep the footer disclaimer ("ผลที่ผ่านมาไม่ได้รับประกันผลในอนาคต · ไม่ใช่คำแนะนำการลงทุน") and the
-  AI answer-rate figure.
+  AI answer-rate figure (one line per AI arm).
 - Do keep everything in one HTML file with inline CSS/JS; only external resources are Google Fonts and
   lightweight-charts.
-- Don't add new colours for decoration, heavy shadows, gradients other than the Gemini box, emoji, or icons
+- Don't add new colours for decoration, heavy shadows, gradients other than the AI box, emoji, or icons
   beyond the coloured dots.
 - Don't use another site's name, logo or text.

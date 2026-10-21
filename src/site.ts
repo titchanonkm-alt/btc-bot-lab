@@ -16,8 +16,10 @@ export interface SiteData {
   history: Record<string, { t: string[]; arms: Record<string, number[]> }>;
   /** Newest first. `t` is the candle the trade was decided on; `pnlPct` is set on sells when the buy is known. */
   trades: SiteTrade[];
-  /** How often the AI arm failed to answer, so readers can judge how fair its result is. */
+  /** How often the AI arms failed to answer, so readers can judge how fair their results are. */
   ai: { decisions: number; errors: number };
+  /** The same, per AI arm. */
+  aiByArm?: Record<string, { decisions: number; errors: number }>;
 }
 
 export interface SiteTrade {
@@ -38,6 +40,9 @@ export interface AssetNow {
   status: string;
   arms: Record<string, { equity: number; equityNoCost: number; holding: string; reason: string }>;
 }
+
+/** Arms whose decisions come from an AI model that can fail to answer. */
+export const AI_ARMS = ["gemini", "jev"];
 
 export const SITE_LIMITS = { historyPoints: 4000, trades: 400, candles: 192 };
 
@@ -82,9 +87,13 @@ export function buildSiteData(
   const reasons = new Map<string, string>();
   for (const [, , asset, arm, , , reason] of rows.decisions) {
     reasons.set(`${asset}/${arm}`, str(reason));
-    if (arm === "gemini") {
+    if (AI_ARMS.includes(str(arm))) {
+      const failed = str(reason).startsWith("error");
       data.ai.decisions++;
-      if (str(reason).startsWith("error")) data.ai.errors++;
+      if (failed) data.ai.errors++;
+      const per = ((data.aiByArm ??= {})[str(arm)] ??= { decisions: 0, errors: 0 });
+      per.decisions++;
+      if (failed) per.errors++;
     }
   }
 
