@@ -10,6 +10,8 @@ on:
         type: choice
         options: ["", "shakedown", "count"]
         default: ""
+permissions:
+  contents: write # publishes the results page data to the `data` branch
 concurrency:
   group: bot
   cancel-in-progress: false
@@ -24,11 +26,32 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Load previous page data
+        run: |
+          if git ls-remote --exit-code origin data >/dev/null; then
+            git fetch -q --depth=1 origin data
+            git show origin/data:data.json > "$RUNNER_TEMP/data.json"
+          else
+            echo "no data branch yet: the page starts empty"
+          fi
       - run: npm run bot
         env:
+          SITE_DATA: ${{ runner.temp }}/data.json
           AI_GATEWAY_API_KEY: ${{ secrets.AI_GATEWAY_API_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           MARKET_DATA_KEY: ${{ secrets.MARKET_DATA_KEY }}
           GOOGLE_SA_JSON: ${{ secrets.GOOGLE_SA_JSON }}
           SHEET_ID: ${{ secrets.SHEET_ID }}
           RESET: ${{ inputs.reset }}
+      - name: Publish page data
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [ -f "$RUNNER_TEMP/data.json" ] || { echo "no page data this run"; exit 0; }
+          mkdir -p "$RUNNER_TEMP/pub" && cp "$RUNNER_TEMP/data.json" "$RUNNER_TEMP/pub/"
+          cd "$RUNNER_TEMP/pub"
+          git init -q -b data
+          git add data.json
+          git -c user.name="btc-bot" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -qm "page data"
+          # One commit, force-pushed: the branch holds only the latest file, never a long history.
+          git push -qf "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" data

@@ -1,3 +1,4 @@
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { makeGeminiArm } from "./arms/gemini.js";
 import { makeJevArm } from "./arms/jev.js";
 import { emaArm, holdArm, rsiArm, taArm } from "./arms/rules.js";
@@ -5,13 +6,14 @@ import { CONFIG } from "./config.js";
 import { HEADERS, emptyRows, newAssetBook, stepAsset, type BotState, type Rows } from "./engine.js";
 import { candlesFor, type Fetcher } from "./prices/sources.js";
 import { Sheet, type ServiceAccount } from "./sheets.js";
+import { buildSiteData, type SiteData } from "./site.js";
 import type { Arm, AssetId } from "./types.js";
 
 /**
  * One run: read state from the Sheet, decide on the newest closed candle of every asset, log, save state.
  * `RESET=count` (or `RESET=shakedown`) wipes every book, locks a fresh USD/THB rate and starts that phase.
  */
-export async function main(env: NodeJS.ProcessEnv, fetcher: Fetcher = fetch): Promise<Rows> {
+export async function main(env: NodeJS.ProcessEnv, fetcher: Fetcher = fetch): Promise<{ rows: Rows; state: BotState; runAt: string }> {
   const now = Date.now();
   const runAt = new Date(now).toISOString();
   const sheet = new Sheet(fetcher, need(env, "SHEET_ID"), JSON.parse(need(env, "GOOGLE_SA_JSON")) as ServiceAccount);
@@ -48,7 +50,7 @@ export async function main(env: NodeJS.ProcessEnv, fetcher: Fetcher = fetch): Pr
   await sheet.append("Trades", rows.trades);
   await sheet.append("Equity", rows.equity);
   await sheet.writeCells("State", "A1:B1", [[JSON.stringify(state), runAt]]);
-  return rows;
+  return { rows, state, runAt };
 }
 
 function armsFor(asset: AssetId, fetcher: Fetcher, env: NodeJS.ProcessEnv): Arm[] {
@@ -78,7 +80,16 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     process.exit(0);
   }
   main(process.env)
-    .then((r) => console.log(r.runs.map((x) => x.join(" | ")).join("\n")))
+    .then(({ rows, state, runAt }) => {
+      console.log(rows.runs.map((x) => x.join(" | ")).join("\n"));
+      // Page data for the public results site; the workflow publishes this file.
+      const out = process.env.SITE_DATA;
+      if (out) {
+        const prev = existsSync(out) ? (JSON.parse(readFileSync(out, "utf8")) as SiteData) : null;
+        writeFileSync(out, JSON.stringify(buildSiteData(prev, state, rows, runAt)));
+        console.log(`site data written to ${out}`);
+      }
+    })
     .catch((e) => {
       console.error(e);
       process.exit(1);

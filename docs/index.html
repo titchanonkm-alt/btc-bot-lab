@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI vs กฎง่ายๆ — สนามเทรดกระดาษ</title>
+<meta name="description" content="บอทเทรดกระดาษ 5 สาย แข่งกันบน BTC ทองคำ และ USD/THB ด้วยราคาตลาดจริง อัปเดตทุก 15 นาที">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+Thai:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #11110f;
+    --panel: #191916;
+    --line: #2c2b27;
+    --ink: #ecebe4;
+    --dim: #8f8d84;
+    --up: #7ee081;
+    --down: #ff6b57;
+    --hot: #ff5b1f;
+    --ema: #4cc9f0;
+    --rsi: #c3a6ff;
+    --ta: #ffd166;
+    --gemini: #ff5b1f;
+    --hold: #a3a29a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); }
+  body { font-family: "IBM Plex Sans Thai", system-ui, sans-serif; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  .mono, .num { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 16px 64px; }
+
+  /* top strip */
+  .strip { border-bottom: 1px solid var(--line); font-size: 12px; color: var(--dim); }
+  .strip .wrap { display: flex; gap: 18px; padding-top: 10px; padding-bottom: 10px; flex-wrap: wrap; }
+  .live::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--up); margin-right: 6px; vertical-align: 1px; animation: pulse 2s infinite; }
+  .live.stale::before { background: var(--down); animation: none; }
+  @keyframes pulse { 50% { opacity: .25; } }
+
+  header { padding: 40px 0 24px; display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: end; }
+  h1 { font-size: clamp(34px, 6vw, 64px); line-height: 1.05; margin: 0; font-weight: 700; letter-spacing: -0.01em; }
+  h1 em { font-style: normal; color: var(--hot); }
+  .sub { color: var(--dim); margin: 12px 0 0; max-width: 560px; }
+  .day { text-align: right; }
+  .day .big { font-size: clamp(48px, 8vw, 88px); line-height: 1; font-weight: 600; }
+  .day .of { color: var(--dim); font-size: 20px; }
+  .badge { display: inline-block; font-size: 12px; padding: 3px 8px; border: 1px solid var(--hot); color: var(--hot); letter-spacing: .06em; margin-bottom: 8px; }
+  .badge.count { border-color: var(--up); color: var(--up); }
+
+  /* asset switcher */
+  .assets { display: flex; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin-top: 8px; overflow-x: auto; }
+  .assets button { flex: 1; min-width: 150px; background: none; border: 0; border-right: 1px solid var(--line); color: var(--dim); text-align: left; padding: 14px 16px; cursor: pointer; font: inherit; }
+  .assets button:last-child { border-right: 0; }
+  .assets button .n { display: block; font-size: 20px; font-weight: 700; color: inherit; }
+  .assets button .p { font-size: 13px; }
+  .assets button[aria-pressed="true"] { color: var(--ink); background: var(--panel); box-shadow: inset 0 -3px 0 var(--hot); }
+
+  section { margin-top: 36px; }
+  h2 { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--dim); font-weight: 600; margin: 0 0 12px; }
+
+  /* leaderboard */
+  .board { width: 100%; border-collapse: collapse; }
+  .board td { padding: 14px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  .board .rank { width: 36px; color: var(--dim); font-size: 22px; }
+  .board .arm { width: 210px; }
+  .board .arm b { display: block; font-size: 18px; }
+  .board .arm small { color: var(--dim); }
+  .board .bar { width: 40%; }
+  .track { position: relative; height: 26px; }
+  .track .zero { position: absolute; left: 50%; top: -6px; bottom: -6px; width: 1px; background: var(--line); }
+  .track .fill { position: absolute; top: 5px; height: 16px; }
+  .board .ret { text-align: right; font-size: 22px; width: 120px; }
+  .board .eq { text-align: right; color: var(--dim); width: 130px; }
+  .board .why { color: var(--dim); font-size: 13px; }
+  .chip { display: inline-block; font-size: 11px; padding: 1px 6px; border: 1px solid var(--line); color: var(--dim); margin-left: 6px; vertical-align: 2px; }
+  .chip.in { border-color: var(--up); color: var(--up); }
+  .up { color: var(--up); } .down { color: var(--down); }
+
+  /* chart */
+  .chart { background: var(--panel); border: 1px solid var(--line); padding: 12px 8px 4px; }
+  .chart svg { display: block; width: 100%; height: 300px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: var(--dim); padding: 8px 8px 4px; }
+  .legend i { display: inline-block; width: 14px; height: 3px; vertical-align: 4px; margin-right: 6px; }
+
+  .two { display: grid; grid-template-columns: 1.4fr 1fr; gap: 28px; }
+  .trades { list-style: none; margin: 0; padding: 0; font-size: 14px; }
+  .trades li { display: grid; grid-template-columns: 64px 70px 1fr auto; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+  .trades .t { color: var(--dim); }
+  .stat { background: var(--panel); border: 1px solid var(--line); padding: 18px; }
+  .stat .big { font-size: 40px; font-weight: 600; line-height: 1.1; }
+  .stat p { color: var(--dim); font-size: 14px; margin: 8px 0 0; }
+  .method { color: var(--dim); font-size: 14px; }
+  .method table { border-collapse: collapse; margin: 8px 0; }
+  .method td { padding: 4px 16px 4px 0; border-bottom: 1px solid var(--line); }
+  a { color: var(--ink); }
+  footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--dim); font-size: 13px; }
+  .empty { color: var(--dim); padding: 24px 0; }
+
+  @media (max-width: 760px) {
+    header { grid-template-columns: 1fr; }
+    .day { text-align: left; }
+    .two { grid-template-columns: 1fr; }
+    .board .eq, .board .bar { display: none; }
+    .board .arm { width: auto; }
+    .board .ret { font-size: 18px; width: 90px; }
+    .chart svg { height: 220px; }
+    .assets button { min-width: 0; padding: 12px 10px; }
+    .assets button .n { font-size: 16px; }
+    .assets button .p { font-size: 11px; }
+    .trades li { grid-template-columns: 48px 76px 1fr auto; }
+    .trades .why { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="strip"><div class="wrap">
+  <span id="live" class="live">กำลังโหลด…</span>
+  <span>เงินกระดาษ ไม่ใช่เงินจริง</span>
+  <span>ราคาจริงจาก Coinbase / Twelve Data</span>
+</div></div>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1><em>AI</em> ปะทะ<br>กฎง่ายๆ</h1>
+      <p class="sub">บอท 5 สายได้เงินตั้งต้นสายละ 10,000 บาทต่อสินทรัพย์ ตัดสินใจทุก 15 นาทีด้วยราคาตลาดจริง ใครจะเหลือเงินมากที่สุด? AI ฟรีของ Google หรือกฎที่เขียนได้ในบรรทัดเดียว</p>
+    </div>
+    <div class="day">
+      <span id="phase" class="badge">—</span>
+      <div><span id="day" class="big num">–</span><span class="of num"> / 28 วัน</span></div>
+    </div>
+  </header>
+
+  <nav class="assets" id="assets" aria-label="เลือกสินทรัพย์"></nav>
+
+  <section>
+    <h2>อันดับตอนนี้ · หักค่าธรรมเนียมจริงแล้ว</h2>
+    <table class="board" id="board"></table>
+  </section>
+
+  <section>
+    <h2>เงินในพอร์ตตามเวลา (บาท)</h2>
+    <div class="chart"><svg id="chart" role="img" aria-label="กราฟเงินในพอร์ตของแต่ละสาย"></svg><div class="legend" id="legend"></div></div>
+  </section>
+
+  <section class="two">
+    <div>
+      <h2>เทรดล่าสุด · ทุกสินทรัพย์</h2>
+      <ul class="trades" id="trades"></ul>
+    </div>
+    <div>
+      <h2>AI ตอบได้กี่ครั้ง</h2>
+      <div class="stat"><div class="big num" id="aiRate">–</div><p id="aiText">AI ฟรีบางครั้งช้าหรือล่ม ครั้งที่ไม่ตอบ บอทจะถือสถานะเดิมไว้ ตัวเลขนี้บอกว่าผลของสาย AI เป็นการตัดสินใจของ AI จริงกี่เปอร์เซ็นต์</p></div>
+    </div>
+  </section>
+
+  <section class="method">
+    <h2>กติกา</h2>
+    <p>ทุกสายซื้อหมดหน้าตักหรือถือเงินสดหมด (long only) คิดค่าธรรมเนียมตามช่องทางที่คนไทยใช้จริง:</p>
+    <table>
+      <tr><td>BTC</td><td class="num">0.15% ต่อครั้ง</td><td>ค่าธรรมเนียม taker ของกระดานเทรดคริปโตไทย</td></tr>
+      <tr><td>ทองคำ</td><td class="num">0.15% ต่อครั้ง</td><td>ส่วนต่างซื้อ-ขายทองแท่งตามราคาสมาคมค้าทองคำ (200 บาท/บาททอง)</td></tr>
+      <tr><td>USD/THB</td><td class="num">0.5% ต่อครั้ง</td><td>ส่วนต่างเรทเงินโอนเฉลี่ยของธนาคารไทยเทียบราคากลาง</td></tr>
+    </table>
+    <p><b>EMA</b> ถือเมื่อเส้นเฉลี่ย 20 อยู่เหนือ 50 · <b>RSI</b> ซื้อเมื่อ RSI ต่ำกว่า 30 ขายเมื่อเกิน 70 · <b>นักเทคนิค</b> เทรนด์ขาขึ้นรายชั่วโมง + ย่อตัว + แท่งเขียว มีจุดตัดขาดทุนและเป้ากำไร 2 เท่า · <b>Gemini</b> AI ของ Google ดูกราฟ 8 ชั่วโมงล่าสุดแล้วตอบว่าถือหรือขาย จะทำตามเมื่อมั่นใจตั้งแต่ 60% · <b>ซื้อแล้วถือ</b> ซื้อวันแรกแล้วไม่ทำอะไรเลย ใช้เป็นไม้บรรทัด</p>
+    <p>ทุกตัวเลขตรวจสอบได้ <a href="https://github.com/titchanonkm-alt/btc-bot-lab">โค้ดทั้งหมดอยู่บน GitHub</a></p>
+  </section>
+
+  <footer>เพื่อการทดลองและการเรียนรู้เท่านั้น ไม่ใช่คำแนะนำการลงทุน ผลในอดีตไม่ได้รับประกันผลในอนาคต</footer>
+</div>
+
+<script>
+const DATA_URL = "https://raw.githubusercontent.com/titchanonkm-alt/btc-bot-lab/data/data.json";
+const ARMS = {
+  ema:    { name: "EMA",        note: "เส้นเฉลี่ยตัดกัน" },
+  rsi:    { name: "RSI",        note: "ซื้อตอนขายมากเกิน" },
+  ta:     { name: "นักเทคนิค",    note: "เทรนด์ + ย่อตัว + จุดตัดขาดทุน" },
+  gemini: { name: "Gemini AI",  note: "AI ฟรีของ Google" },
+  hold:   { name: "ซื้อแล้วถือ",   note: "ไม้บรรทัด" },
+};
+const ASSETS = { BTC: "Bitcoin", XAU: "ทองคำ", USDTHB: "ดอลลาร์/บาท" };
+const START = 10000;
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const color = (arm) => css("--" + arm) || "#888";
+let data = null;
+let asset = "BTC";
+try { asset = localStorage.getItem("asset") || "BTC"; } catch (e) {}
+
+const fmt = (n, d = 0) => Number.isFinite(n) ? n.toLocaleString("th-TH", { minimumFractionDigits: d, maximumFractionDigits: d }) : "–";
+const pct = (eq) => (eq / START - 1) * 100;
+const sign = (n) => (n > 0 ? "+" : "") + fmt(n, 2) + "%";
+const ago = (iso) => {
+  const m = Math.round((Date.now() - new Date(iso)) / 60000);
+  return m < 1 ? "เมื่อสักครู่" : m < 60 ? m + " นาทีที่แล้ว" : Math.round(m / 60) + " ชม. ที่แล้ว";
+};
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+async function load() {
+  try {
+    const res = await fetch(DATA_URL + "?t=" + Date.now(), { cache: "no-store" });
+    if (!res.ok) throw new Error(res.status);
+    data = await res.json();
+    render();
+  } catch (e) {
+    document.getElementById("live").textContent = "ยังไม่มีข้อมูล หรือโหลดไม่สำเร็จ";
+    document.getElementById("live").classList.add("stale");
+  }
+}
+
+function render() {
+  const live = document.getElementById("live");
+  const stale = Date.now() - new Date(data.updatedAt) > 45 * 60000;
+  live.textContent = "อัปเดต " + ago(data.updatedAt);
+  live.classList.toggle("stale", stale);
+
+  const counting = data.phase === "count";
+  const phase = document.getElementById("phase");
+  phase.textContent = counting ? "กำลังนับผลจริง" : "ช่วงทดลองระบบ · ยังไม่นับ";
+  phase.classList.toggle("count", counting);
+  const days = Math.min(28, Math.floor((Date.now() - new Date(data.startedAt)) / 86400000) + 1);
+  document.getElementById("day").textContent = counting ? days : "0";
+
+  if (!data.assets[asset]) asset = Object.keys(data.assets)[0] || "BTC";
+  renderAssets(); renderBoard(); renderChart(); renderTrades(); renderAi();
+}
+
+function renderAssets() {
+  const nav = document.getElementById("assets");
+  nav.innerHTML = Object.keys(ASSETS).map((k) => {
+    const a = data.assets[k];
+    const price = a && Number.isFinite(a.price) ? fmt(a.price, k === "USDTHB" ? 3 : 2) : "–";
+    return `<button aria-pressed="${k === asset}" data-k="${k}"><span class="n">${ASSETS[k]}</span><span class="p num">${k} ${price}</span></button>`;
+  }).join("");
+  nav.querySelectorAll("button").forEach((b) => b.onclick = () => {
+    asset = b.dataset.k;
+    try { localStorage.setItem("asset", asset); } catch (e) {}
+    render();
+  });
+}
+
+function renderBoard() {
+  const a = data.assets[asset];
+  const board = document.getElementById("board");
+  if (!a || !Object.keys(a.arms).length) { board.innerHTML = `<tr><td class="empty">รอแท่งราคาแรก…</td></tr>`; return; }
+  const rows = Object.entries(a.arms).sort((x, y) => y[1].equity - x[1].equity);
+  const maxAbs = Math.max(0.5, ...rows.map(([, r]) => Math.abs(pct(r.equity))));
+  board.innerHTML = rows.map(([id, r], i) => {
+    const p = pct(r.equity);
+    const w = (Math.abs(p) / maxAbs) * 50;
+    const left = p >= 0 ? 50 : 50 - w;
+    const meta = ARMS[id] || { name: id, note: "" };
+    const holding = r.holding === "asset";
+    return `<tr>
+      <td class="rank num">${i + 1}</td>
+      <td class="arm"><b style="color:${color(id)}">${meta.name}<span class="chip ${holding ? "in" : ""}">${holding ? "ถือ " + asset : "เงินสด"}</span></b><small>${esc(r.reason || meta.note)}</small></td>
+      <td class="bar"><div class="track"><span class="zero"></span><span class="fill" style="left:${left}%;width:${w}%;background:${color(id)}"></span></div></td>
+      <td class="ret num ${p > 0 ? "up" : p < 0 ? "down" : ""}">${sign(p)}</td>
+      <td class="eq num">฿${fmt(r.equity)}</td>
+    </tr>`;
+  }).join("");
+}
+
+function renderChart() {
+  const svg = document.getElementById("chart");
+  const legend = document.getElementById("legend");
+  const h = data.history[asset];
+  const W = svg.clientWidth || 800, H = svg.clientHeight || 300, P = { l: 56, r: 12, t: 10, b: 24 };
+  if (!h || h.t.length < 2) { svg.innerHTML = `<text x="16" y="40" fill="${css("--dim")}" font-size="14">ต้องมีอย่างน้อย 2 แท่งราคาก่อนจะวาดกราฟได้</text>`; legend.innerHTML = ""; return; }
+  const n = h.t.length;
+  const all = Object.values(h.arms).flat().filter(Number.isFinite);
+  let lo = Math.min(START, ...all), hi = Math.max(START, ...all);
+  const pad = (hi - lo) * 0.08 || 20; lo -= pad; hi += pad;
+  const x = (i) => P.l + (i / (n - 1)) * (W - P.l - P.r);
+  const y = (v) => P.t + (1 - (v - lo) / (hi - lo)) * (H - P.t - P.b);
+  let out = "";
+  for (let k = 0; k <= 4; k++) {
+    const v = lo + ((hi - lo) * k) / 4;
+    out += `<line x1="${P.l}" x2="${W - P.r}" y1="${y(v)}" y2="${y(v)}" stroke="${css("--line")}"/>`;
+    out += `<text x="${P.l - 8}" y="${y(v) + 4}" text-anchor="end" fill="${css("--dim")}" font-size="11" font-family="IBM Plex Mono">${fmt(v)}</text>`;
+  }
+  out += `<line x1="${P.l}" x2="${W - P.r}" y1="${y(START)}" y2="${y(START)}" stroke="${css("--dim")}" stroke-dasharray="3 4"/>`;
+  const first = new Date(h.t[0]), last = new Date(h.t[n - 1]);
+  const d = (t) => t.toLocaleString("th-TH", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  out += `<text x="${P.l}" y="${H - 6}" fill="${css("--dim")}" font-size="11">${d(first)}</text>`;
+  out += `<text x="${W - P.r}" y="${H - 6}" text-anchor="end" fill="${css("--dim")}" font-size="11">${d(last)}</text>`;
+  const order = ["hold", "ema", "rsi", "ta", "gemini"].filter((id) => h.arms[id]);
+  for (const id of order) {
+    const s = h.arms[id];
+    let path = "", pen = false;
+    s.forEach((v, i) => { if (!Number.isFinite(v)) { pen = false; return; } path += (pen ? "L" : "M") + x(i).toFixed(1) + " " + y(v).toFixed(1); pen = true; });
+    const width = id === "gemini" ? 2.6 : 1.6;
+    const dash = id === "hold" ? ' stroke-dasharray="5 4"' : "";
+    out += `<path d="${path}" fill="none" stroke="${color(id)}" stroke-width="${width}"${dash} stroke-linejoin="round"/>`;
+  }
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.innerHTML = out;
+  legend.innerHTML = order.map((id) => `<span><i style="background:${color(id)}"></i>${(ARMS[id] || { name: id }).name}</span>`).join("");
+}
+
+function renderTrades() {
+  const ul = document.getElementById("trades");
+  if (!data.trades.length) { ul.innerHTML = `<li class="empty">ยังไม่มีการซื้อขาย</li>`; return; }
+  ul.innerHTML = data.trades.slice(0, 15).map((t) => {
+    const when = new Date(t.t).toLocaleString("th-TH", { hour: "2-digit", minute: "2-digit", day: "numeric", month: "short" });
+    const meta = ARMS[t.arm] || { name: t.arm };
+    return `<li><span class="t num">${when.split(" ").slice(-1)[0]}</span><span style="color:${color(t.arm)}">${meta.name}</span><span>${t.side === "buy" ? "ซื้อ" : "ขาย"} ${t.asset} <span class="t why">${esc(t.reason)}</span></span><span class="num">${fmt(t.price, t.asset === "USDTHB" ? 3 : 2)}</span></li>`;
+  }).join("");
+}
+
+function renderAi() {
+  const { decisions, errors } = data.ai;
+  const rate = decisions ? ((decisions - errors) / decisions) * 100 : NaN;
+  const el = document.getElementById("aiRate");
+  el.textContent = Number.isFinite(rate) ? fmt(rate, 1) + "%" : "–";
+  el.className = "big num " + (rate >= 95 ? "up" : rate < 80 ? "down" : "");
+  document.getElementById("aiText").textContent =
+    `ตอบได้ ${fmt(decisions - errors)} จาก ${fmt(decisions)} ครั้ง ครั้งที่ AI ไม่ตอบ (ช้าหรือล่ม) บอทจะถือสถานะเดิมไว้ ตัวเลขนี้บอกว่าผลของสาย AI เป็นการตัดสินใจของ AI จริงกี่เปอร์เซ็นต์`;
+}
+
+window.addEventListener("resize", () => data && renderChart());
+load();
+setInterval(load, 60000);
+</script>
+</body>
+</html>

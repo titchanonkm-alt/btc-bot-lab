@@ -24,7 +24,7 @@ Each arm starts with 10,000 THB per asset, all-in or all-out, long only. Costs a
 - [x] Jev and Microsoft Decision-1 arms are in the code but switched off: they need paid Vercel AI Gateway credit (minimum $10)
 - [x] Google Sheet log (Runs, Decisions, Trades, Equity) + State
 - [x] GitHub Actions: `bot` every 15 minutes, `probe` to check every service, `test` on push
-- [ ] Secrets set and probe passing
+- [x] Secrets set and probe passing
 - [ ] Shakedown, then start the count
 
 ## Secrets (repository → Settings → Secrets and variables → Actions)
@@ -47,3 +47,14 @@ npm test
 ```
 
 No API keys live in this repository. Runtime keys come from GitHub Secrets.
+
+## Live results page
+
+`docs/index.html` is published with GitHub Pages. After every run the bot rebuilds `data.json`
+(see `src/site.ts`) and the workflow force-pushes it as the only file on the `data` branch;
+the page reads it from there and refreshes every minute.
+
+## Clock
+
+GitHub's own cron is best-effort (it fired every 4-5 hours on this repo), so a Google Apps Script
+(`scheduler/trigger.gs`) dispatches the `bot` workflow every 15 minutes. The cron stays as a backup.
