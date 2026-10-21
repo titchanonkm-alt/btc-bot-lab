@@ -7,13 +7,16 @@ import { HEADERS, emptyRows, newAssetBook, stepAsset, type BotState, type Rows }
 import { candlesFor, type Fetcher } from "./prices/sources.js";
 import { Sheet, type ServiceAccount } from "./sheets.js";
 import { buildSiteData, type SiteData } from "./site.js";
-import type { Arm, AssetId } from "./types.js";
+import type { Arm, AssetId, Candle } from "./types.js";
 
 /**
  * One run: read state from the Sheet, decide on the newest closed candle of every asset, log, save state.
  * `RESET=count` (or `RESET=shakedown`) wipes every book, locks a fresh USD/THB rate and starts that phase.
  */
-export async function main(env: NodeJS.ProcessEnv, fetcher: Fetcher = fetch): Promise<{ rows: Rows; state: BotState; runAt: string }> {
+export async function main(
+  env: NodeJS.ProcessEnv,
+  fetcher: Fetcher = fetch,
+): Promise<{ rows: Rows; state: BotState; runAt: string; candles: Partial<Record<AssetId, Candle[]>> }> {
   const now = Date.now();
   const runAt = new Date(now).toISOString();
   const sheet = new Sheet(fetcher, need(env, "SHEET_ID"), JSON.parse(need(env, "GOOGLE_SA_JSON")) as ServiceAccount);
@@ -32,11 +35,13 @@ export async function main(env: NodeJS.ProcessEnv, fetcher: Fetcher = fetch): Pr
   }
 
   const rows = emptyRows();
+  const seen: Partial<Record<AssetId, Candle[]>> = {};
   for (const asset of CONFIG.assets) {
     const book = state.assets[asset];
     if (!book) continue;
     try {
       const candles = await candlesFor(asset, deps);
+      seen[asset] = candles;
       const arms = armsFor(asset, fetcher, env);
       state.assets[asset] = await stepAsset(asset, candles, book, arms, state.phase, runAt, rows);
     } catch (e) {
@@ -50,7 +55,7 @@ export async function main(env: NodeJS.ProcessEnv, fetcher: Fetcher = fetch): Pr
   await sheet.append("Trades", rows.trades);
   await sheet.append("Equity", rows.equity);
   await sheet.writeCells("State", "A1:B1", [[JSON.stringify(state), runAt]]);
-  return { rows, state, runAt };
+  return { rows, state, runAt, candles: seen };
 }
 
 function armsFor(asset: AssetId, fetcher: Fetcher, env: NodeJS.ProcessEnv): Arm[] {
@@ -80,13 +85,13 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     process.exit(0);
   }
   main(process.env)
-    .then(({ rows, state, runAt }) => {
+    .then(({ rows, state, runAt, candles }) => {
       console.log(rows.runs.map((x) => x.join(" | ")).join("\n"));
       // Page data for the public results site; the workflow publishes this file.
       const out = process.env.SITE_DATA;
       if (out) {
         const prev = existsSync(out) ? (JSON.parse(readFileSync(out, "utf8")) as SiteData) : null;
-        writeFileSync(out, JSON.stringify(buildSiteData(prev, state, rows, runAt)));
+        writeFileSync(out, JSON.stringify(buildSiteData(prev, state, rows, runAt, candles)));
         console.log(`site data written to ${out}`);
       }
     })
