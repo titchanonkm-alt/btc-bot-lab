@@ -65,6 +65,8 @@ Dark mode follows the system setting (`prefers-color-scheme`); light is the defa
 - **"AI คิดว่า" box:** soft orange→violet gradient, radius 12; one small label + one bold line per AI arm
   (Gemini, Jev), each with a dot in the arm colour.
 - Rows inside cards are separated by 1px `--line` top borders, never zebra stripes.
+- **Leader line** (equity card): name a leader only when one arm is strictly ahead and above 0%; otherwise
+  say "ยังเสมอกันทุกสาย", "เสมอกัน N สาย", "… ยังไม่ขาดทุน · สายอื่นติดลบ" or "ติดลบทุกสาย · … เสียน้อยสุด".
 - **Leaderboard** (equity card): small dim header row, columns rank · arm · ถือ/เงินสด tag · เงินในพอร์ต ·
   กำไร/ขาดทุน · ร่วงหนักสุด (max drawdown, red when below 0) · เทรด (count). On mobile the เงินในพอร์ต column hides.
 
