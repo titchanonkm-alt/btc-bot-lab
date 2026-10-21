@@ -211,7 +211,8 @@ const TH_OFFSET = 7 * 3600; // lightweight-charts shows UTC; shift to Thai time
 const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 const color = (arm) => css("--" + arm) || "#888";
 const fmt = (n, d = 0) => Number.isFinite(n) ? n.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d }) : "–";
-const pct = (eq) => (eq / START - 1) * 100;
+// Rounded to 2 decimals so a tiny loss shows as a grey 0.00%, never a red "−0.00%".
+const pct = (eq) => Math.round((eq / START - 1) * 10000) / 100 || 0;
 const signPct = (p) => (p > 0 ? "+" : p < 0 ? "−" : "") + fmt(Math.abs(p), 2) + "%";
 const cls = (p) => (p > 0 ? "up" : p < 0 ? "down" : "dim");
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
