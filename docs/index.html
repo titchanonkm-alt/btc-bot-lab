@@ -7,193 +7,244 @@
 <meta name="description" content="บอทเทรดกระดาษ 5 สาย แข่งกันบน BTC ทองคำ และ USD/THB ด้วยราคาตลาดจริง อัปเดตทุก 15 นาที">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+Thai:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <style>
   :root {
-    --bg: #11110f;
-    --panel: #191916;
-    --line: #2c2b27;
-    --ink: #ecebe4;
-    --dim: #8f8d84;
-    --up: #7ee081;
-    --down: #ff6b57;
+    --bg: #f3f2ee;
+    --card: #ffffff;
+    --line: #e6e4dd;
+    --soft: #f6f5f1;
+    --ink: #15140f;
+    --dim: #7c796f;
+    --up: #0f9d6b;
+    --up-bg: #e3f5ec;
+    --down: #e0413a;
+    --down-bg: #fde8e6;
     --hot: #ff5b1f;
-    --ema: #4cc9f0;
-    --rsi: #c3a6ff;
-    --ta: #ffd166;
+    --ema: #1f8fcf;
+    --rsi: #8a63e8;
+    --ta: #d79a00;
     --gemini: #ff5b1f;
-    --hold: #a3a29a;
+    --hold: #8c8a82;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0e0f11; --card: #16171a; --line: #26282c; --soft: #1c1d21;
+      --ink: #ecebe6; --dim: #8d8c86; --up: #3ccf91; --up-bg: #12301f; --down: #ff6b5f; --down-bg: #3a1714;
+      --ema: #4cc9f0; --rsi: #b59bff; --ta: #ffd166; --hold: #a3a29a;
+    }
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; background: var(--bg); color: var(--ink); }
   body { font-family: "IBM Plex Sans Thai", system-ui, sans-serif; line-height: 1.5; -webkit-font-smoothing: antialiased; }
-  .mono, .num { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
-  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 16px 64px; }
+  .num { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  .wrap { max-width: 1400px; margin: 0 auto; padding: 16px 16px 32px; }
+  .up { color: var(--up); } .down { color: var(--down); } .dim { color: var(--dim); }
 
-  /* top strip */
-  .strip { border-bottom: 1px solid var(--line); font-size: 12px; color: var(--dim); }
-  .strip .wrap { display: flex; gap: 18px; padding-top: 10px; padding-bottom: 10px; flex-wrap: wrap; }
-  .live::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--up); margin-right: 6px; vertical-align: 1px; animation: pulse 2s infinite; }
-  .live.stale::before { background: var(--down); animation: none; }
-  @keyframes pulse { 50% { opacity: .25; } }
+  /* top bar */
+  .top { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; }
+  .mark { width: 30px; height: 30px; border-radius: 8px; background: var(--hot); color: #fff; display: grid; place-items: center; font-size: 13px; font-weight: 700; }
+  .tabs { display: flex; background: var(--soft); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
+  .tabs button { border: 0; background: none; font: inherit; font-size: 14px; color: var(--dim); padding: 6px 14px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 7px; }
+  .tabs button[aria-pressed="true"] { background: var(--card); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+  .tabs i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  .status { margin-left: auto; display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--dim); }
+  .pill { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 4px 12px; color: var(--ink); }
+  .pill::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--up); margin-right: 7px; vertical-align: 1px; }
+  .pill.stale::before { background: var(--down); }
+  .phase { border-radius: 6px; padding: 3px 9px; font-size: 12px; font-weight: 600; background: var(--hot); color: #fff; }
+  .phase.count { background: var(--up); }
 
-  header { padding: 40px 0 24px; display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: end; }
-  h1 { font-size: clamp(34px, 6vw, 64px); line-height: 1.05; margin: 0; font-weight: 700; letter-spacing: -0.01em; }
-  h1 em { font-style: normal; color: var(--hot); }
-  .sub { color: var(--dim); margin: 12px 0 0; max-width: 560px; }
-  .day { text-align: right; }
-  .day .big { font-size: clamp(48px, 8vw, 88px); line-height: 1; font-weight: 600; }
-  .day .of { color: var(--dim); font-size: 20px; }
-  .badge { display: inline-block; font-size: 12px; padding: 3px 8px; border: 1px solid var(--hot); color: var(--hot); letter-spacing: .06em; margin-bottom: 8px; }
-  .badge.count { border-color: var(--up); color: var(--up); }
+  /* grid */
+  .grid { display: grid; grid-template-columns: minmax(0, 2.1fr) minmax(0, 1fr); grid-template-areas: "price now" "equity trades" "equity overview"; gap: 16px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px 22px; min-width: 0; }
+  .card h3 { margin: 0 0 12px; font-size: 15px; font-weight: 600; }
+  .price { grid-area: price; } .equity { grid-area: equity; } .now { grid-area: now; } .trades { grid-area: trades; } .overview { grid-area: overview; }
 
-  /* asset switcher */
-  .assets { display: flex; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin-top: 8px; overflow-x: auto; }
-  .assets button { flex: 1; min-width: 150px; background: none; border: 0; border-right: 1px solid var(--line); color: var(--dim); text-align: left; padding: 14px 16px; cursor: pointer; font: inherit; }
-  .assets button:last-child { border-right: 0; }
-  .assets button .n { display: block; font-size: 20px; font-weight: 700; color: inherit; }
-  .assets button .p { font-size: 13px; }
-  .assets button[aria-pressed="true"] { color: var(--ink); background: var(--panel); box-shadow: inset 0 -3px 0 var(--hot); }
+  .price-head { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .big { font-size: clamp(36px, 5vw, 52px); font-weight: 600; line-height: 1.05; letter-spacing: -0.02em; }
+  .sub { font-size: 13px; color: var(--dim); }
+  .hl { text-align: right; font-size: 13px; color: var(--dim); }
+  .chart { height: 300px; margin-top: 12px; }
+  .chart.sm { height: 230px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 10px; font-size: 12px; color: var(--dim); }
+  .chip { border: 1px solid var(--line); background: var(--soft); border-radius: 999px; padding: 2px 10px; cursor: pointer; font: inherit; font-size: 12px; color: var(--dim); }
+  .chip[aria-pressed="true"] { color: var(--ink); border-color: currentColor; background: var(--card); font-weight: 600; }
 
-  section { margin-top: 36px; }
-  h2 { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--dim); font-weight: 600; margin: 0 0 12px; }
+  .eq-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+  .lead { font-size: 22px; font-weight: 700; }
+  .seg { display: flex; background: var(--soft); border: 1px solid var(--line); border-radius: 10px; padding: 3px; height: fit-content; }
+  .seg button { border: 0; background: none; font: inherit; font-size: 13px; color: var(--dim); padding: 4px 12px; border-radius: 7px; cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--card); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
 
-  /* leaderboard */
-  .board { width: 100%; border-collapse: collapse; }
-  .board td { padding: 14px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
-  .board .rank { width: 36px; color: var(--dim); font-size: 22px; }
-  .board .arm { width: 210px; }
-  .board .arm b { display: block; font-size: 18px; }
-  .board .arm small { color: var(--dim); }
-  .board .bar { width: 40%; }
-  .track { position: relative; height: 26px; }
-  .track .zero { position: absolute; left: 50%; top: -6px; bottom: -6px; width: 1px; background: var(--line); }
-  .track .fill { position: absolute; top: 5px; height: 16px; }
-  .board .ret { text-align: right; font-size: 22px; width: 120px; }
-  .board .eq { text-align: right; color: var(--dim); width: 130px; }
-  .board .why { color: var(--dim); font-size: 13px; }
-  .chip { display: inline-block; font-size: 11px; padding: 1px 6px; border: 1px solid var(--line); color: var(--dim); margin-left: 6px; vertical-align: 2px; }
-  .chip.in { border-color: var(--up); color: var(--up); }
-  .up { color: var(--up); } .down { color: var(--down); }
+  .board { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 14px; }
+  .board td { padding: 9px 4px; border-top: 1px solid var(--line); }
+  .board .r { text-align: right; }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 8px; vertical-align: -1px; }
+  .tag { display: inline-block; font-size: 11px; border-radius: 5px; padding: 0 6px; background: var(--soft); color: var(--dim); border: 1px solid var(--line); }
+  .tag.in { background: var(--up-bg); color: var(--up); border-color: transparent; }
 
-  /* chart */
-  .chart { background: var(--panel); border: 1px solid var(--line); padding: 12px 8px 4px; }
-  .chart svg { display: block; width: 100%; height: 300px; }
-  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: var(--dim); padding: 8px 8px 4px; }
-  .legend i { display: inline-block; width: 14px; height: 3px; vertical-align: 4px; margin-right: 6px; }
+  /* now */
+  .think { background: linear-gradient(135deg, rgba(255,91,31,.10), rgba(138,99,232,.08)); border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; }
+  .think .q { font-size: 13px; color: var(--dim); }
+  .think .a { font-size: 16px; font-weight: 600; margin-top: 4px; }
+  .think .a::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--gemini); margin-right: 8px; vertical-align: 2px; }
+  .arms { list-style: none; margin: 0; padding: 0; }
+  .arms li { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 14px; }
+  .arms small { grid-column: 1 / -1; color: var(--dim); font-size: 12px; }
 
-  .two { display: grid; grid-template-columns: 1.4fr 1fr; gap: 28px; }
-  .trades { list-style: none; margin: 0; padding: 0; font-size: 14px; }
-  .trades li { display: grid; grid-template-columns: 64px 70px 1fr auto; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); }
-  .trades .t { color: var(--dim); }
-  .stat { background: var(--panel); border: 1px solid var(--line); padding: 18px; }
-  .stat .big { font-size: 40px; font-weight: 600; line-height: 1.1; }
-  .stat p { color: var(--dim); font-size: 14px; margin: 8px 0 0; }
-  .method { color: var(--dim); font-size: 14px; }
-  .method table { border-collapse: collapse; margin: 8px 0; }
-  .method td { padding: 4px 16px 4px 0; border-bottom: 1px solid var(--line); }
-  a { color: var(--ink); }
-  footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--dim); font-size: 13px; }
-  .empty { color: var(--dim); padding: 24px 0; }
+  /* trades */
+  .tlist { list-style: none; margin: 0; padding: 0; font-size: 14px; }
+  .tlist li { display: grid; grid-template-columns: 46px 1fr auto auto; gap: 10px; align-items: center; padding: 7px 0; border-top: 1px solid var(--line); }
+  .pnl { border-radius: 6px; padding: 1px 8px; font-size: 13px; }
+  .pnl.up { background: var(--up-bg); } .pnl.down { background: var(--down-bg); }
 
-  @media (max-width: 760px) {
-    header { grid-template-columns: 1fr; }
-    .day { text-align: left; }
-    .two { grid-template-columns: 1fr; }
-    .board .eq, .board .bar { display: none; }
-    .board .arm { width: auto; }
-    .board .ret { font-size: 18px; width: 90px; }
-    .chart svg { height: 220px; }
-    .assets button { min-width: 0; padding: 12px 10px; }
-    .assets button .n { font-size: 16px; }
-    .assets button .p { font-size: 11px; }
-    .trades li { grid-template-columns: 48px 76px 1fr auto; }
-    .trades .why { display: none; }
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 16px; }
+  .stats .k { font-size: 13px; color: var(--dim); }
+  .stats .v { font-size: 18px; font-weight: 600; }
+  footer { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--dim); margin-top: 16px; }
+  footer a { color: inherit; }
+  .empty { color: var(--dim); font-size: 14px; padding: 12px 0; }
+
+  @media (max-width: 900px) {
+    .grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "equity" "now" "price" "trades" "overview"; }
+    .status { margin-left: 0; width: 100%; }
+    .hl { text-align: left; }
+    .chart { height: 260px; }
   }
 </style>
 </head>
 <body>
-<div class="strip"><div class="wrap">
-  <span id="live" class="live">กำลังโหลด…</span>
-  <span>เงินกระดาษ ไม่ใช่เงินจริง</span>
-  <span>ราคาจริงจาก Coinbase / Twelve Data</span>
-</div></div>
-
 <div class="wrap">
-  <header>
-    <div>
-      <h1><em>AI</em> ปะทะ<br>กฎง่ายๆ</h1>
-      <p class="sub">บอท 5 สายได้เงินตั้งต้นสายละ 10,000 บาทต่อสินทรัพย์ ตัดสินใจทุก 15 นาทีด้วยราคาตลาดจริง ใครจะเหลือเงินมากที่สุด? AI ฟรีของ Google หรือกฎที่เขียนได้ในบรรทัดเดียว</p>
+  <div class="top">
+    <div class="brand"><span class="mark">AI</span>AI vs กฎง่ายๆ</div>
+    <nav class="tabs" id="tabs" aria-label="เลือกสินทรัพย์"></nav>
+    <div class="status">
+      <span id="phase" class="phase">—</span>
+      <span id="pill" class="pill">กำลังโหลด</span>
+      <span id="updated"></span>
     </div>
-    <div class="day">
-      <span id="phase" class="badge">—</span>
-      <div><span id="day" class="big num">–</span><span class="of num"> / 28 วัน</span></div>
-    </div>
-  </header>
+  </div>
 
-  <nav class="assets" id="assets" aria-label="เลือกสินทรัพย์"></nav>
+  <div class="grid">
+    <section class="card price">
+      <div class="price-head">
+        <div>
+          <div class="big num" id="price">–</div>
+          <div class="sub"><span id="assetName"></span> · <span id="change" class="num"></span></div>
+        </div>
+        <div class="hl num" id="hilo"></div>
+      </div>
+      <div class="chart" id="candles"></div>
+      <div class="chips" id="markerChips"><span>ลูกศรบนกราฟ = จุดซื้อขายของ</span></div>
+    </section>
 
-  <section>
-    <h2>อันดับตอนนี้ · หักค่าธรรมเนียมจริงแล้ว</h2>
-    <table class="board" id="board"></table>
-  </section>
+    <section class="card equity">
+      <div class="eq-head">
+        <div>
+          <h3 style="margin-bottom:4px">เงินในพอร์ต · <span id="eqAsset"></span></h3>
+          <div class="lead" id="lead">–</div>
+          <div class="sub" id="leadSub"></div>
+        </div>
+        <div class="seg" id="range">
+          <button data-r="96">วันนี้</button>
+          <button data-r="672">7 วัน</button>
+          <button data-r="0" aria-pressed="true">ตั้งแต่เริ่ม</button>
+        </div>
+      </div>
+      <div class="chart sm" id="equityChart"></div>
+      <table class="board" id="board"></table>
+    </section>
 
-  <section>
-    <h2>เงินในพอร์ตตามเวลา (บาท)</h2>
-    <div class="chart"><svg id="chart" role="img" aria-label="กราฟเงินในพอร์ตของแต่ละสาย"></svg><div class="legend" id="legend"></div></div>
-  </section>
+    <section class="card now">
+      <h3>ตอนนี้บอทแต่ละสายทำอะไรอยู่</h3>
+      <div class="think">
+        <div class="q" id="thinkQ">Gemini คิดว่า</div>
+        <div class="a" id="thinkA">–</div>
+      </div>
+      <ul class="arms" id="arms"></ul>
+    </section>
 
-  <section class="two">
-    <div>
-      <h2>เทรดล่าสุด · ทุกสินทรัพย์</h2>
-      <ul class="trades" id="trades"></ul>
-    </div>
-    <div>
-      <h2>AI ตอบได้กี่ครั้ง</h2>
-      <div class="stat"><div class="big num" id="aiRate">–</div><p id="aiText">AI ฟรีบางครั้งช้าหรือล่ม ครั้งที่ไม่ตอบ บอทจะถือสถานะเดิมไว้ ตัวเลขนี้บอกว่าผลของสาย AI เป็นการตัดสินใจของ AI จริงกี่เปอร์เซ็นต์</p></div>
-    </div>
-  </section>
+    <section class="card trades">
+      <h3 style="display:flex;justify-content:space-between">การเทรดล่าสุด <span class="sub" id="tradeCount"></span></h3>
+      <ul class="tlist" id="tlist"></ul>
+    </section>
 
-  <section class="method">
-    <h2>กติกา</h2>
-    <p>ทุกสายซื้อหมดหน้าตักหรือถือเงินสดหมด (long only) คิดค่าธรรมเนียมตามช่องทางที่คนไทยใช้จริง:</p>
-    <table>
-      <tr><td>BTC</td><td class="num">0.15% ต่อครั้ง</td><td>ค่าธรรมเนียม taker ของกระดานเทรดคริปโตไทย</td></tr>
-      <tr><td>ทองคำ</td><td class="num">0.15% ต่อครั้ง</td><td>ส่วนต่างซื้อ-ขายทองแท่งตามราคาสมาคมค้าทองคำ (200 บาท/บาททอง)</td></tr>
-      <tr><td>USD/THB</td><td class="num">0.5% ต่อครั้ง</td><td>ส่วนต่างเรทเงินโอนเฉลี่ยของธนาคารไทยเทียบราคากลาง</td></tr>
-    </table>
-    <p><b>EMA</b> ถือเมื่อเส้นเฉลี่ย 20 อยู่เหนือ 50 · <b>RSI</b> ซื้อเมื่อ RSI ต่ำกว่า 30 ขายเมื่อเกิน 70 · <b>นักเทคนิค</b> เทรนด์ขาขึ้นรายชั่วโมง + ย่อตัว + แท่งเขียว มีจุดตัดขาดทุนและเป้ากำไร 2 เท่า · <b>Gemini</b> AI ของ Google ดูกราฟ 8 ชั่วโมงล่าสุดแล้วตอบว่าถือหรือขาย จะทำตามเมื่อมั่นใจตั้งแต่ 60% · <b>ซื้อแล้วถือ</b> ซื้อวันแรกแล้วไม่ทำอะไรเลย ใช้เป็นไม้บรรทัด</p>
-    <p>ทุกตัวเลขตรวจสอบได้ <a href="https://github.com/titchanonkm-alt/btc-bot-lab">โค้ดทั้งหมดอยู่บน GitHub</a></p>
-  </section>
+    <section class="card overview">
+      <h3>ภาพรวม</h3>
+      <div class="stats">
+        <div><div class="k">เริ่มนับ</div><div class="v" id="started">–</div></div>
+        <div><div class="k">AI ตอบได้</div><div class="v num" id="aiRate">–</div></div>
+        <div><div class="k">ค่าธรรมเนียมต่อครั้ง</div><div class="v num" id="cost">–</div></div>
+        <div><div class="k">เงินตั้งต้น</div><div class="v num">฿10,000 / สาย</div></div>
+      </div>
+      <p class="sub" style="margin:14px 0 0">ทุกสายซื้อหมดหน้าตักหรือถือเงินสดหมด คิดค่าธรรมเนียมตามช่องทางที่คนไทยใช้จริง: กระดานคริปโตไทย ร้านทอง และเรทเงินโอนธนาคาร · <a href="https://github.com/titchanonkm-alt/btc-bot-lab" style="color:inherit">โค้ดทั้งหมด</a></p>
+    </section>
+  </div>
 
-  <footer>เพื่อการทดลองและการเรียนรู้เท่านั้น ไม่ใช่คำแนะนำการลงทุน ผลในอดีตไม่ได้รับประกันผลในอนาคต</footer>
+  <footer>
+    <span>บอทเทรดกระดาษ 5 สาย ใช้ราคาตลาดจริง ไม่ใช่เงินจริง · ตัวเลขอัปเดตเองทุก 15 นาที · เวลาไทย</span>
+    <span>ผลที่ผ่านมาไม่ได้รับประกันผลในอนาคต · ไม่ใช่คำแนะนำการลงทุน</span>
+  </footer>
 </div>
 
 <script>
 const DATA_URL = "https://raw.githubusercontent.com/titchanonkm-alt/btc-bot-lab/data/data.json";
 const ARMS = {
-  ema:    { name: "EMA",        note: "เส้นเฉลี่ยตัดกัน" },
-  rsi:    { name: "RSI",        note: "ซื้อตอนขายมากเกิน" },
-  ta:     { name: "นักเทคนิค",    note: "เทรนด์ + ย่อตัว + จุดตัดขาดทุน" },
-  gemini: { name: "Gemini AI",  note: "AI ฟรีของ Google" },
-  hold:   { name: "ซื้อแล้วถือ",   note: "ไม้บรรทัด" },
+  gemini: { name: "Gemini AI", note: "AI ฟรีของ Google" },
+  ema: { name: "EMA", note: "เส้นเฉลี่ยตัดกัน" },
+  rsi: { name: "RSI", note: "ซื้อตอนขายมากเกิน" },
+  ta: { name: "นักเทคนิค", note: "เทรนด์ + ย่อตัว + จุดตัดขาดทุน" },
+  hold: { name: "ซื้อแล้วถือ", note: "ไม้บรรทัด" },
 };
-const ASSETS = { BTC: "Bitcoin", XAU: "ทองคำ", USDTHB: "ดอลลาร์/บาท" };
+const ASSETS = {
+  BTC: { name: "Bitcoin (BTC/USD)", tab: "BTC", color: "#f7931a", dp: 2, cost: "0.15%" },
+  XAU: { name: "ทองคำ (XAU/USD)", tab: "ทองคำ", color: "#d4a72c", dp: 2, cost: "0.15%" },
+  USDTHB: { name: "ดอลลาร์/บาท (USD/THB)", tab: "USD/THB", color: "#2e7d5b", dp: 3, cost: "0.5%" },
+};
 const START = 10000;
+const TH_OFFSET = 7 * 3600; // lightweight-charts shows UTC; shift to Thai time
 const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 const color = (arm) => css("--" + arm) || "#888";
-let data = null;
-let asset = "BTC";
-try { asset = localStorage.getItem("asset") || "BTC"; } catch (e) {}
-
-const fmt = (n, d = 0) => Number.isFinite(n) ? n.toLocaleString("th-TH", { minimumFractionDigits: d, maximumFractionDigits: d }) : "–";
+const fmt = (n, d = 0) => Number.isFinite(n) ? n.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d }) : "–";
 const pct = (eq) => (eq / START - 1) * 100;
-const sign = (n) => (n > 0 ? "+" : "") + fmt(n, 2) + "%";
-const ago = (iso) => {
-  const m = Math.round((Date.now() - new Date(iso)) / 60000);
-  return m < 1 ? "เมื่อสักครู่" : m < 60 ? m + " นาทีที่แล้ว" : Math.round(m / 60) + " ชม. ที่แล้ว";
-};
+const signPct = (p) => (p > 0 ? "+" : p < 0 ? "−" : "") + fmt(Math.abs(p), 2) + "%";
+const cls = (p) => (p > 0 ? "up" : p < 0 ? "down" : "dim");
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const sec = (iso) => Math.floor(new Date(iso).getTime() / 1000) + TH_OFFSET;
+const hhmm = (iso) => new Date(iso).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Bangkok" });
+const store = { get: (k, d) => { try { return localStorage.getItem(k) ?? d; } catch (e) { return d; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} } };
+
+let data = null;
+let asset = store.get("asset", "BTC");
+let markerArm = store.get("markerArm", "gemini");
+let range = 0;
+let candleChart, candleSeries, eqChart, eqSeries = {};
+
+function chartOptions(el) {
+  return {
+    autoSize: true,
+    layout: { background: { color: "transparent" }, textColor: css("--dim"), fontFamily: "IBM Plex Mono", fontSize: 11 },
+    grid: { vertLines: { visible: false }, horzLines: { color: css("--line") } },
+    rightPriceScale: { borderVisible: false },
+    timeScale: { borderVisible: false, timeVisible: true, secondsVisible: false },
+    crosshair: { mode: 1 },
+    localization: { locale: "th-TH" },
+    handleScroll: false, handleScale: false,
+  };
+}
+
+function setupCharts() {
+  if (!window.LightweightCharts || candleChart) return;
+  candleChart = LightweightCharts.createChart(document.getElementById("candles"), chartOptions());
+  candleSeries = candleChart.addCandlestickSeries({
+    upColor: css("--up"), downColor: css("--down"), wickUpColor: css("--up"), wickDownColor: css("--down"), borderVisible: false,
+  });
+  eqChart = LightweightCharts.createChart(document.getElementById("equityChart"), chartOptions());
+  eqChart.applyOptions({ localization: { locale: "th-TH", priceFormatter: (p) => "฿" + fmt(p) } });
+}
 
 async function load() {
   try {
@@ -202,122 +253,167 @@ async function load() {
     data = await res.json();
     render();
   } catch (e) {
-    document.getElementById("live").textContent = "ยังไม่มีข้อมูล หรือโหลดไม่สำเร็จ";
-    document.getElementById("live").classList.add("stale");
+    document.getElementById("pill").textContent = "ยังไม่มีข้อมูล";
+    document.getElementById("pill").classList.add("stale");
   }
 }
 
 function render() {
-  const live = document.getElementById("live");
-  const stale = Date.now() - new Date(data.updatedAt) > 45 * 60000;
-  live.textContent = "อัปเดต " + ago(data.updatedAt);
-  live.classList.toggle("stale", stale);
-
-  const counting = data.phase === "count";
-  const phase = document.getElementById("phase");
-  phase.textContent = counting ? "กำลังนับผลจริง" : "ช่วงทดลองระบบ · ยังไม่นับ";
-  phase.classList.toggle("count", counting);
-  const days = Math.min(28, Math.floor((Date.now() - new Date(data.startedAt)) / 86400000) + 1);
-  document.getElementById("day").textContent = counting ? days : "0";
-
+  setupCharts();
   if (!data.assets[asset]) asset = Object.keys(data.assets)[0] || "BTC";
-  renderAssets(); renderBoard(); renderChart(); renderTrades(); renderAi();
+  const mins = Math.round((Date.now() - new Date(data.updatedAt)) / 60000);
+  const pill = document.getElementById("pill");
+  const stale = mins > 45;
+  pill.textContent = stale ? "หยุดอัปเดต" : "ทำงานอยู่";
+  pill.classList.toggle("stale", stale);
+  document.getElementById("updated").textContent = "อัปเดต " + (mins < 1 ? "เมื่อสักครู่" : mins < 60 ? mins + " นาทีที่แล้ว" : Math.round(mins / 60) + " ชม. ที่แล้ว");
+  const counting = data.phase === "count";
+  const ph = document.getElementById("phase");
+  ph.textContent = counting ? "นับผลจริง" : "ทดลองระบบ · ยังไม่นับ";
+  ph.classList.toggle("count", counting);
+  renderTabs(); renderPrice(); renderEquity(); renderNow(); renderTrades(); renderOverview();
 }
 
-function renderAssets() {
-  const nav = document.getElementById("assets");
-  nav.innerHTML = Object.keys(ASSETS).map((k) => {
-    const a = data.assets[k];
-    const price = a && Number.isFinite(a.price) ? fmt(a.price, k === "USDTHB" ? 3 : 2) : "–";
-    return `<button aria-pressed="${k === asset}" data-k="${k}"><span class="n">${ASSETS[k]}</span><span class="p num">${k} ${price}</span></button>`;
-  }).join("");
-  nav.querySelectorAll("button").forEach((b) => b.onclick = () => {
-    asset = b.dataset.k;
-    try { localStorage.setItem("asset", asset); } catch (e) {}
-    render();
-  });
+function renderTabs() {
+  const nav = document.getElementById("tabs");
+  nav.innerHTML = Object.entries(ASSETS).map(([k, a]) =>
+    `<button data-k="${k}" aria-pressed="${k === asset}"><i style="background:${a.color}"></i>${a.tab}</button>`).join("");
+  nav.querySelectorAll("button").forEach((b) => b.onclick = () => { asset = b.dataset.k; store.set("asset", asset); render(); });
 }
 
-function renderBoard() {
+function renderPrice() {
+  const a = data.assets[asset] || {};
+  const meta = ASSETS[asset];
+  const c = a.candles || [];
+  const last = c.at(-1);
+  document.getElementById("price").textContent = last ? fmt(last[4], meta.dp) : "–";
+  document.getElementById("assetName").textContent = meta.name + " · แท่งละ 15 นาที";
+  const dayAgo = c.length > 96 ? c[c.length - 97][4] : c[0]?.[1];
+  const ch = last && dayAgo ? (last[4] / dayAgo - 1) * 100 : NaN;
+  const chEl = document.getElementById("change");
+  chEl.textContent = Number.isFinite(ch) ? "24 ชม. " + signPct(ch) : "";
+  chEl.className = "num " + cls(ch);
+  const recent = c.slice(-96);
+  const hi = Math.max(...recent.map((x) => x[2])), lo = Math.min(...recent.map((x) => x[3]));
+  document.getElementById("hilo").innerHTML = recent.length ? `สูงสุด 24 ชม. ${fmt(hi, meta.dp)}<br>ต่ำสุด 24 ชม. ${fmt(lo, meta.dp)}` : "";
+
+  if (candleSeries) {
+    candleSeries.setData(c.map(([t, o, h, l, cl]) => ({ time: Math.floor(t / 1000) + TH_OFFSET, open: o, high: h, low: l, close: cl })));
+    candleSeries.applyOptions({ priceFormat: { type: "price", precision: meta.dp, minMove: 1 / 10 ** meta.dp } });
+    const first = c[0] ? Math.floor(c[0][0] / 1000) + TH_OFFSET : 0;
+    const markers = data.trades
+      .filter((t) => t.asset === asset && t.arm === markerArm && sec(t.t) >= first)
+      .map((t) => ({
+        time: sec(t.t),
+        position: t.side === "buy" ? "belowBar" : "aboveBar",
+        color: t.side === "buy" ? css("--up") : css("--down"),
+        shape: t.side === "buy" ? "arrowUp" : "arrowDown",
+        text: t.side === "buy" ? "ซื้อ" : "ขาย",
+      }))
+      .sort((x, y) => x.time - y.time);
+    candleSeries.setMarkers(markers);
+    candleChart.timeScale().fitContent();
+  }
+
+  const chips = document.getElementById("markerChips");
+  chips.innerHTML = `<span>ลูกศรบนกราฟ = จุดซื้อขายของ</span>` + Object.entries(ARMS).filter(([id]) => id !== "hold").map(([id, m]) =>
+    `<button class="chip" data-a="${id}" aria-pressed="${id === markerArm}" style="${id === markerArm ? "color:" + color(id) : ""}">${m.name}</button>`).join("");
+  chips.querySelectorAll("button").forEach((b) => b.onclick = () => { markerArm = b.dataset.a; store.set("markerArm", markerArm); renderPrice(); });
+}
+
+function renderEquity() {
+  document.getElementById("eqAsset").textContent = ASSETS[asset].tab;
   const a = data.assets[asset];
-  const board = document.getElementById("board");
-  if (!a || !Object.keys(a.arms).length) { board.innerHTML = `<tr><td class="empty">รอแท่งราคาแรก…</td></tr>`; return; }
-  const rows = Object.entries(a.arms).sort((x, y) => y[1].equity - x[1].equity);
-  const maxAbs = Math.max(0.5, ...rows.map(([, r]) => Math.abs(pct(r.equity))));
-  board.innerHTML = rows.map(([id, r], i) => {
-    const p = pct(r.equity);
-    const w = (Math.abs(p) / maxAbs) * 50;
-    const left = p >= 0 ? 50 : 50 - w;
-    const meta = ARMS[id] || { name: id, note: "" };
-    const holding = r.holding === "asset";
-    return `<tr>
-      <td class="rank num">${i + 1}</td>
-      <td class="arm"><b style="color:${color(id)}">${meta.name}<span class="chip ${holding ? "in" : ""}">${holding ? "ถือ " + asset : "เงินสด"}</span></b><small>${esc(r.reason || meta.note)}</small></td>
-      <td class="bar"><div class="track"><span class="zero"></span><span class="fill" style="left:${left}%;width:${w}%;background:${color(id)}"></span></div></td>
-      <td class="ret num ${p > 0 ? "up" : p < 0 ? "down" : ""}">${sign(p)}</td>
-      <td class="eq num">฿${fmt(r.equity)}</td>
-    </tr>`;
+  const rows = a ? Object.entries(a.arms).sort((x, y) => y[1].equity - x[1].equity) : [];
+  const lead = document.getElementById("lead");
+  if (!rows.length) { lead.textContent = "รอแท่งราคาแรก"; document.getElementById("board").innerHTML = ""; return; }
+  const [topId, top] = rows[0];
+  const p = pct(top.equity);
+  lead.innerHTML = `<span style="color:${color(topId)}">${ARMS[topId]?.name || topId}</span> นำอยู่ <span class="${cls(p)}">${signPct(p)}</span>`;
+  const ai = a.arms.gemini;
+  document.getElementById("leadSub").innerHTML = ai ? `Gemini อยู่อันดับ ${rows.findIndex(([id]) => id === "gemini") + 1} จาก ${rows.length} · ฿${fmt(ai.equity)}` : "";
+
+  document.getElementById("board").innerHTML = rows.map(([id, r], i) => {
+    const q = pct(r.equity);
+    return `<tr><td class="dim num">${i + 1}</td><td><span class="dot" style="background:${color(id)}"></span>${ARMS[id]?.name || id}</td>
+      <td><span class="tag ${r.holding === "asset" ? "in" : ""}">${r.holding === "asset" ? "ถือ" : "เงินสด"}</span></td>
+      <td class="r num">฿${fmt(r.equity)}</td><td class="r num ${cls(q)}">${signPct(q)}</td></tr>`;
   }).join("");
+
+  if (!eqChart) return;
+  for (const s of Object.values(eqSeries)) eqChart.removeSeries(s);
+  eqSeries = {};
+  const h = data.history[asset];
+  if (!h) return;
+  const from = range ? Math.max(0, h.t.length - range) : 0;
+  for (const id of ["hold", "ema", "rsi", "ta", "gemini"]) {
+    const s = h.arms[id];
+    if (!s) continue;
+    const series = eqChart.addLineSeries({
+      color: color(id), lineWidth: id === "gemini" ? 3 : 2, lineStyle: id === "hold" ? 2 : 0,
+      priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false,
+    });
+    const pts = [];
+    for (let i = from; i < h.t.length; i++) if (Number.isFinite(s[i])) pts.push({ time: sec(h.t[i]), value: s[i] });
+    series.setData(pts);
+    eqSeries[id] = series;
+  }
+  eqChart.timeScale().fitContent();
 }
 
-function renderChart() {
-  const svg = document.getElementById("chart");
-  const legend = document.getElementById("legend");
-  const h = data.history[asset];
-  const W = svg.clientWidth || 800, H = svg.clientHeight || 300, P = { l: 56, r: 12, t: 10, b: 24 };
-  if (!h || h.t.length < 2) { svg.innerHTML = `<text x="16" y="40" fill="${css("--dim")}" font-size="14">ต้องมีอย่างน้อย 2 แท่งราคาก่อนจะวาดกราฟได้</text>`; legend.innerHTML = ""; return; }
-  const n = h.t.length;
-  const all = Object.values(h.arms).flat().filter(Number.isFinite);
-  let lo = Math.min(START, ...all), hi = Math.max(START, ...all);
-  const pad = (hi - lo) * 0.08 || 20; lo -= pad; hi += pad;
-  const x = (i) => P.l + (i / (n - 1)) * (W - P.l - P.r);
-  const y = (v) => P.t + (1 - (v - lo) / (hi - lo)) * (H - P.t - P.b);
-  let out = "";
-  for (let k = 0; k <= 4; k++) {
-    const v = lo + ((hi - lo) * k) / 4;
-    out += `<line x1="${P.l}" x2="${W - P.r}" y1="${y(v)}" y2="${y(v)}" stroke="${css("--line")}"/>`;
-    out += `<text x="${P.l - 8}" y="${y(v) + 4}" text-anchor="end" fill="${css("--dim")}" font-size="11" font-family="IBM Plex Mono">${fmt(v)}</text>`;
+function renderNow() {
+  const a = data.assets[asset];
+  const g = a?.arms.gemini;
+  const q = document.getElementById("thinkQ"), ans = document.getElementById("thinkA");
+  q.textContent = "Gemini คิดว่า · " + ASSETS[asset].tab;
+  if (!g) { ans.textContent = "–"; }
+  else if (g.reason.startsWith("error")) { ans.textContent = "รอบนี้ AI ไม่ตอบ (ช้าหรือล่ม) ถือสถานะเดิม"; }
+  else {
+    const m = g.reason.match(/(asset|cash) (\d+)%/);
+    const holding = g.holding === "asset";
+    const lean = m ? `${m[1] === "asset" ? "ให้น้ำหนักซื้อ" : "ให้น้ำหนักขาย"} ${m[2]}%` : "";
+    const acted = m && Number(m[2]) >= 60;
+    ans.textContent = acted
+      ? (holding ? "เข้าซื้อแล้ว" : "ขายออกแล้ว") + " · " + lean
+      : (holding ? "ถือต่อ" : "รอก่อน") + (lean ? ` · ${lean} (ต้องถึง 60%)` : "");
   }
-  out += `<line x1="${P.l}" x2="${W - P.r}" y1="${y(START)}" y2="${y(START)}" stroke="${css("--dim")}" stroke-dasharray="3 4"/>`;
-  const first = new Date(h.t[0]), last = new Date(h.t[n - 1]);
-  const d = (t) => t.toLocaleString("th-TH", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-  out += `<text x="${P.l}" y="${H - 6}" fill="${css("--dim")}" font-size="11">${d(first)}</text>`;
-  out += `<text x="${W - P.r}" y="${H - 6}" text-anchor="end" fill="${css("--dim")}" font-size="11">${d(last)}</text>`;
-  const order = ["hold", "ema", "rsi", "ta", "gemini"].filter((id) => h.arms[id]);
-  for (const id of order) {
-    const s = h.arms[id];
-    let path = "", pen = false;
-    s.forEach((v, i) => { if (!Number.isFinite(v)) { pen = false; return; } path += (pen ? "L" : "M") + x(i).toFixed(1) + " " + y(v).toFixed(1); pen = true; });
-    const width = id === "gemini" ? 2.6 : 1.6;
-    const dash = id === "hold" ? ' stroke-dasharray="5 4"' : "";
-    out += `<path d="${path}" fill="none" stroke="${color(id)}" stroke-width="${width}"${dash} stroke-linejoin="round"/>`;
-  }
-  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
-  svg.innerHTML = out;
-  legend.innerHTML = order.map((id) => `<span><i style="background:${color(id)}"></i>${(ARMS[id] || { name: id }).name}</span>`).join("");
+  document.getElementById("arms").innerHTML = a ? Object.entries(ARMS).filter(([id]) => a.arms[id]).map(([id, m]) => {
+    const r = a.arms[id];
+    return `<li><span><span class="dot" style="background:${color(id)}"></span>${m.name}</span>
+      <span class="tag ${r.holding === "asset" ? "in" : ""}">${r.holding === "asset" ? "ถือ " + ASSETS[asset].tab : "เงินสด"}</span>
+      <small>${esc(r.reason || m.note)}</small></li>`;
+  }).join("") : "";
 }
 
 function renderTrades() {
-  const ul = document.getElementById("trades");
-  if (!data.trades.length) { ul.innerHTML = `<li class="empty">ยังไม่มีการซื้อขาย</li>`; return; }
-  ul.innerHTML = data.trades.slice(0, 15).map((t) => {
-    const when = new Date(t.t).toLocaleString("th-TH", { hour: "2-digit", minute: "2-digit", day: "numeric", month: "short" });
-    const meta = ARMS[t.arm] || { name: t.arm };
-    return `<li><span class="t num">${when.split(" ").slice(-1)[0]}</span><span style="color:${color(t.arm)}">${meta.name}</span><span>${t.side === "buy" ? "ซื้อ" : "ขาย"} ${t.asset} <span class="t why">${esc(t.reason)}</span></span><span class="num">${fmt(t.price, t.asset === "USDTHB" ? 3 : 2)}</span></li>`;
-  }).join("");
+  const list = data.trades.filter((t) => t.asset === asset);
+  document.getElementById("tradeCount").textContent = list.length ? `${Math.min(8, list.length)} รายการล่าสุด จาก ${fmt(list.length)}` : "";
+  document.getElementById("tlist").innerHTML = list.length ? list.slice(0, 8).map((t) => {
+    const p = t.pnlPct;
+    const right = Number.isFinite(p) ? `<span class="pnl num ${cls(p)}">${signPct(p)}</span>` : `<span class="tag">${t.side === "buy" ? "เข้าซื้อ" : "ขาย"}</span>`;
+    return `<li><span class="num">${hhmm(t.t)}</span><span><span class="dot" style="background:${color(t.arm)}"></span>${ARMS[t.arm]?.name || t.arm}</span>
+      <span class="num dim">${fmt(t.price, ASSETS[t.asset]?.dp ?? 2)}</span>${right}</li>`;
+  }).join("") : `<li class="empty">ยังไม่มีการซื้อขาย</li>`;
 }
 
-function renderAi() {
+function renderOverview() {
+  const start = new Date(data.startedAt);
+  const days = Math.floor((Date.now() - start) / 86400000) + 1;
+  document.getElementById("started").textContent = start.toLocaleDateString("th-TH", { day: "numeric", month: "short", timeZone: "Asia/Bangkok" }) + ` · ${days} วัน`;
   const { decisions, errors } = data.ai;
   const rate = decisions ? ((decisions - errors) / decisions) * 100 : NaN;
   const el = document.getElementById("aiRate");
-  el.textContent = Number.isFinite(rate) ? fmt(rate, 1) + "%" : "–";
-  el.className = "big num " + (rate >= 95 ? "up" : rate < 80 ? "down" : "");
-  document.getElementById("aiText").textContent =
-    `ตอบได้ ${fmt(decisions - errors)} จาก ${fmt(decisions)} ครั้ง ครั้งที่ AI ไม่ตอบ (ช้าหรือล่ม) บอทจะถือสถานะเดิมไว้ ตัวเลขนี้บอกว่าผลของสาย AI เป็นการตัดสินใจของ AI จริงกี่เปอร์เซ็นต์`;
+  el.textContent = Number.isFinite(rate) ? `${fmt(rate, 1)}%` : "–";
+  el.className = "v num " + (rate >= 95 ? "up" : rate < 80 ? "down" : "");
+  el.title = `ตอบได้ ${decisions - errors} จาก ${decisions} ครั้ง ที่เหลือบอทถือสถานะเดิม`;
+  document.getElementById("cost").textContent = ASSETS[asset].cost;
 }
 
-window.addEventListener("resize", () => data && renderChart());
+document.getElementById("range").querySelectorAll("button").forEach((b) => b.onclick = () => {
+  range = Number(b.dataset.r);
+  document.querySelectorAll("#range button").forEach((x) => x.setAttribute("aria-pressed", x === b));
+  renderEquity();
+});
 load();
 setInterval(load, 60000);
 </script>

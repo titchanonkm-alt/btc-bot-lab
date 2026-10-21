@@ -38,6 +38,21 @@ describe("site data", () => {
     expect(b.updatedAt).toBe("t2");
   });
 
+  it("keeps recent candles and works out profit on a sell", () => {
+    const candles = { BTC: [{ t: 1, o: 1, h: 2, l: 0.5, c: 1.5, v: null }] };
+    const a = buildSiteData(null, state(), run("t1", "c1", 9985, 10000), "t1", candles);
+    expect(a.assets.BTC!.candles).toEqual([[1, 1, 2, 0.5, 1.5]]);
+    const sell: Rows = {
+      runs: [["t2", "BTC", "c2", 84050, 0, "ok"]],
+      decisions: [],
+      trades: [["t2", "count", "BTC", "ema", "sell", 84050, 0.0036, 15, "ema20 below ema50"]],
+      equity: [],
+    };
+    const b = buildSiteData(a, state(), sell, "t2");
+    expect(b.trades[0]).toMatchObject({ t: "c2", side: "sell", arm: "ema" });
+    expect(b.trades[0]!.pnlPct).toBeCloseTo(2.5);
+  });
+
   it("starts over after a reset", () => {
     const a = buildSiteData(null, state("old"), run("t1", "c1", 9985, 10000), "t1");
     const b = buildSiteData(a, state("new"), run("t2", "c2", 10000, 10000), "t2");
