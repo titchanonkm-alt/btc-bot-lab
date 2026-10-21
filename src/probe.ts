@@ -3,6 +3,7 @@
  * Prints what works and what does not. Never prints a key.
  */
 import { GEMINI, makeGeminiArm } from "./arms/gemini.js";
+import { JEV, makeJevArm } from "./arms/jev.js";
 import { candlesFor } from "./prices/sources.js";
 import type { AssetId } from "./types.js";
 
@@ -59,6 +60,18 @@ try {
   }
 } catch (e) {
   line("gemini real decision", false, (e as Error).message);
+}
+
+// Jev through OpenRouter: one real-size decision on BTC, timed.
+try {
+  const candles = await candlesFor("BTC", { fetcher: fetch, now, twelveDataKey: env.MARKET_DATA_KEY });
+  const t0 = Date.now();
+  const d = await makeJevArm({ fetcher: fetch, apiKey: env.OPENROUTER_API_KEY, asset: "BTC", id: "jev" }).decide({
+    candles, holding: false, state: {},
+  });
+  line(`jev ${JEV.model} via OpenRouter`, !d.reason.startsWith("error"), `${d.reason} in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
+} catch (e) {
+  line("jev via OpenRouter", false, (e as Error).message);
 }
 
 line("google service account", Boolean(env.GOOGLE_SA_JSON), env.GOOGLE_SA_JSON ? "secret present" : "GOOGLE_SA_JSON not set");

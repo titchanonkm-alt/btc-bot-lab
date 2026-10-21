@@ -17,5 +17,5 @@ export const CONFIG = {
    */
   costPerSide: { BTC: 0.0015, XAU: 0.0015, USDTHB: 0.005 } satisfies Record<AssetId, number>,
   /** Arms run in this order; the ids appear in every Sheet row. */
-  arms: ["ema", "rsi", "ta", "gemini", "hold"],
+  arms: ["ema", "rsi", "ta", "gemini", "jev", "hold"],
 };

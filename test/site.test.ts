@@ -66,3 +66,21 @@ describe("site data", () => {
     expect(a.history.BTC!.t).toEqual(["c1"]);
   });
 });
+
+describe("site data for several AI arms", () => {
+  it("counts answers per AI arm", () => {
+    const rows: Rows = {
+      runs: [["t1", "BTC", "c1", 82000, 0, "ok"]],
+      decisions: [
+        ["t1", "count", "BTC", "gemini", "c1", "cash", "error: timeout"],
+        ["t1", "count", "BTC", "jev", "c1", "cash", "jev asset 40% < 60%"],
+        ["t1", "count", "BTC", "ema", "c1", "asset", "ema20 above ema50"],
+      ],
+      trades: [],
+      equity: [],
+    };
+    const d = buildSiteData(null, state(), rows, "t1");
+    expect(d.aiByArm).toEqual({ gemini: { decisions: 1, errors: 1 }, jev: { decisions: 1, errors: 0 } });
+    expect(d.ai).toEqual({ decisions: 2, errors: 1 });
+  });
+});

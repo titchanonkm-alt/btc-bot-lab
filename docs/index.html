@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AI vs กฎง่ายๆ — สนามเทรดกระดาษ</title>
-<meta name="description" content="บอทเทรดกระดาษ 5 สาย แข่งกันบน BTC ทองคำ และ USD/THB ด้วยราคาตลาดจริง อัปเดตทุก 15 นาที">
+<meta name="description" content="บอทเทรดกระดาษ 6 สาย แข่งกันบน BTC ทองคำ และ USD/THB ด้วยราคาตลาดจริง อัปเดตทุก 15 นาที">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -26,13 +26,14 @@
     --rsi: #8a63e8;
     --ta: #d79a00;
     --gemini: #ff5b1f;
+    --jev: #0f9f94;
     --hold: #8c8a82;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       --bg: #0e0f11; --card: #16171a; --line: #26282c; --soft: #1c1d21;
       --ink: #ecebe6; --dim: #8d8c86; --up: #3ccf91; --up-bg: #12301f; --down: #ff6b5f; --down-bg: #3a1714;
-      --ema: #4cc9f0; --rsi: #b59bff; --ta: #ffd166; --hold: #a3a29a;
+      --ema: #4cc9f0; --rsi: #b59bff; --jev: #2dd4bf; --ta: #ffd166; --hold: #a3a29a;
     }
   }
   * { box-sizing: border-box; }
@@ -90,7 +91,9 @@
   .think { background: linear-gradient(135deg, rgba(255,91,31,.10), rgba(138,99,232,.08)); border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; }
   .think .q { font-size: 13px; color: var(--dim); }
   .think .a { font-size: 16px; font-weight: 600; margin-top: 4px; }
-  .think .a::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--gemini); margin-right: 8px; vertical-align: 2px; }
+  .think .a { margin-bottom: 8px; }
+  .think .a:last-child { margin-bottom: 0; }
+  .think .a i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; vertical-align: 2px; }
   .arms { list-style: none; margin: 0; padding: 0; }
   .arms li { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 14px; }
   .arms small { grid-column: 1 / -1; color: var(--dim); font-size: 12px; }
@@ -161,10 +164,7 @@
 
     <section class="card now">
       <h3>ตอนนี้บอทแต่ละสายทำอะไรอยู่</h3>
-      <div class="think">
-        <div class="q" id="thinkQ">Gemini คิดว่า</div>
-        <div class="a" id="thinkA">–</div>
-      </div>
+      <div class="think" id="think"></div>
       <ul class="arms" id="arms"></ul>
     </section>
 
@@ -186,7 +186,7 @@
   </div>
 
   <footer>
-    <span>บอทเทรดกระดาษ 5 สาย ใช้ราคาตลาดจริง ไม่ใช่เงินจริง · ตัวเลขอัปเดตเองทุก 15 นาที · เวลาไทย</span>
+    <span>บอทเทรดกระดาษ 6 สาย ใช้ราคาตลาดจริง ไม่ใช่เงินจริง · ตัวเลขอัปเดตเองทุก 15 นาที · เวลาไทย</span>
     <span>ผลที่ผ่านมาไม่ได้รับประกันผลในอนาคต · ไม่ใช่คำแนะนำการลงทุน</span>
   </footer>
 </div>
@@ -195,6 +195,7 @@
 const DATA_URL = "https://raw.githubusercontent.com/titchanonkm-alt/btc-bot-lab/data/data.json";
 const ARMS = {
   gemini: { name: "Gemini AI", note: "AI ฟรีของ Google" },
+  jev: { name: "Jev AI", note: "AI ตัดสินใจของ TypeSafe (ตัวเดียวกับบอท Jex)" },
   ema: { name: "EMA", note: "เส้นเฉลี่ยตัดกัน" },
   rsi: { name: "RSI", note: "ซื้อตอนขายมากเกิน" },
   ta: { name: "นักเทคนิค", note: "เทรนด์ + ย่อตัว + จุดตัดขาดทุน" },
@@ -347,11 +348,11 @@ function renderEquity() {
   const h = data.history[asset];
   if (!h) return;
   const from = range ? Math.max(0, h.t.length - range) : 0;
-  for (const id of ["hold", "ema", "rsi", "ta", "gemini"]) {
+  for (const id of ["hold", "ema", "rsi", "ta", "jev", "gemini"]) {
     const s = h.arms[id];
     if (!s) continue;
     const series = eqChart.addLineSeries({
-      color: color(id), lineWidth: id === "gemini" ? 3 : 2, lineStyle: id === "hold" ? 2 : 0,
+      color: color(id), lineWidth: id === "gemini" || id === "jev" ? 3 : 2, lineStyle: id === "hold" ? 2 : 0,
       priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false,
     });
     const pts = [];
@@ -364,20 +365,22 @@ function renderEquity() {
 
 function renderNow() {
   const a = data.assets[asset];
-  const g = a?.arms.gemini;
-  const q = document.getElementById("thinkQ"), ans = document.getElementById("thinkA");
-  q.textContent = "Gemini คิดว่า · " + ASSETS[asset].tab;
-  if (!g) { ans.textContent = "–"; }
-  else if (g.reason.startsWith("error")) { ans.textContent = "รอบนี้ AI ไม่ตอบ (ช้าหรือล่ม) ถือสถานะเดิม"; }
-  else {
-    const m = g.reason.match(/(asset|cash) (\d+)%/);
-    const holding = g.holding === "asset";
-    const lean = m ? `${m[1] === "asset" ? "ให้น้ำหนักซื้อ" : "ให้น้ำหนักขาย"} ${m[2]}%` : "";
-    const acted = m && Number(m[2]) >= 60;
-    ans.textContent = acted
-      ? (holding ? "เข้าซื้อแล้ว" : "ขายออกแล้ว") + " · " + lean
-      : (holding ? "ถือต่อ" : "รอก่อน") + (lean ? ` · ${lean} (ต้องถึง 60%)` : "");
-  }
+  const box = document.getElementById("think");
+  const ais = ["gemini", "jev"].filter((id) => a?.arms[id]);
+  box.innerHTML = ais.length ? ais.map((id) => {
+    const r = a.arms[id];
+    let text;
+    if (r.reason.startsWith("error")) text = "รอบนี้ไม่ตอบ (ช้าหรือล่ม) ถือสถานะเดิม";
+    else {
+      const m = r.reason.match(/(asset|cash) (\d+)%/);
+      const holding = r.holding === "asset";
+      const lean = m ? `${m[1] === "asset" ? "ให้น้ำหนักซื้อ" : "ให้น้ำหนักขาย"} ${m[2]}%` : "";
+      const acted = m && Number(m[2]) >= 60;
+      text = acted ? (holding ? "เข้าซื้อแล้ว" : "ขายออกแล้ว") + " · " + lean
+        : (holding ? "ถือต่อ" : "รอก่อน") + (lean ? ` · ${lean} (ต้องถึง 60%)` : "");
+    }
+    return `<div class="q">${ARMS[id].name} คิดว่า · ${ASSETS[asset].tab}</div><div class="a"><i style="background:${color(id)}"></i>${esc(text)}</div>`;
+  }).join("") : `<div class="q">AI คิดว่า</div><div class="a">–</div>`;
   document.getElementById("arms").innerHTML = a ? Object.entries(ARMS).filter(([id]) => a.arms[id]).map(([id, m]) => {
     const r = a.arms[id];
     return `<li><span><span class="dot" style="background:${color(id)}"></span>${m.name}</span>
@@ -401,12 +404,15 @@ function renderOverview() {
   const start = new Date(data.startedAt);
   const days = Math.floor((Date.now() - start) / 86400000) + 1;
   document.getElementById("started").textContent = start.toLocaleDateString("th-TH", { day: "numeric", month: "short", timeZone: "Asia/Bangkok" }) + ` · ${days} วัน`;
-  const { decisions, errors } = data.ai;
-  const rate = decisions ? ((decisions - errors) / decisions) * 100 : NaN;
   const el = document.getElementById("aiRate");
-  el.textContent = Number.isFinite(rate) ? `${fmt(rate, 1)}%` : "–";
-  el.className = "v num " + (rate >= 95 ? "up" : rate < 80 ? "down" : "");
-  el.title = `ตอบได้ ${decisions - errors} จาก ${decisions} ครั้ง ที่เหลือบอทถือสถานะเดิม`;
+  const per = data.aiByArm || { gemini: data.ai };
+  const parts = Object.entries(per).map(([id, { decisions, errors }]) => {
+    const rate = decisions ? ((decisions - errors) / decisions) * 100 : NaN;
+    const c = rate >= 95 ? "up" : rate < 80 ? "down" : "";
+    return `<span class="${c}" title="ตอบได้ ${decisions - errors} จาก ${decisions} ครั้ง">${(ARMS[id]?.name || id).replace(" AI", "")} ${Number.isFinite(rate) ? fmt(rate, 1) + "%" : "–"}</span>`;
+  });
+  el.innerHTML = parts.join("<br>") || "–";
+  el.className = "v num";
   document.getElementById("cost").textContent = ASSETS[asset].cost;
 }
 

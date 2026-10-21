@@ -65,7 +65,7 @@ function armsFor(asset: AssetId, fetcher: Fetcher, env: NodeJS.ProcessEnv): Arm[
     rsi: rsiArm,
     ta: taArm,
     hold: holdArm,
-    jev: makeJevArm({ fetcher, apiKey: aiKey, asset, id: "jev" }),
+    jev: makeJevArm({ fetcher, apiKey: env.OPENROUTER_API_KEY, asset, id: "jev" }),
     decision1: makeJevArm({ fetcher, apiKey: aiKey, asset, id: "decision1" }),
     gemini: makeGeminiArm({ fetcher, apiKey: env.GEMINI_API_KEY, asset }),
   };
