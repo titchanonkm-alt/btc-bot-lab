@@ -335,7 +335,15 @@ function renderEquity() {
   if (!rows.length) { lead.textContent = "รอแท่งราคาแรก"; document.getElementById("board").innerHTML = ""; return; }
   const [topId, top] = rows[0];
   const p = pct(top.equity);
-  lead.innerHTML = `<span style="color:${color(topId)}">${ARMS[topId]?.name || topId}</span> นำอยู่ <span class="${cls(p)}">${signPct(p)}</span>`;
+  const nameOf = (id) => `<span style="color:${color(id)}">${ARMS[id]?.name || id}</span>`;
+  const tied = rows.filter(([, r]) => pct(r.equity) === p);
+  const pctHtml = `<span class="${cls(p)}">${signPct(p)}</span>`;
+  // Only call a leader when one arm is strictly ahead; ties and all-red boards are said as they are.
+  if (tied.length === rows.length) lead.innerHTML = `ยังเสมอกันทุกสาย ${pctHtml}`;
+  else if (tied.length > 1) lead.innerHTML = `เสมอกัน ${tied.length} สาย ${pctHtml}`;
+  else if (p > 0) lead.innerHTML = `${nameOf(topId)} นำอยู่ ${pctHtml}`;
+  else if (p === 0) lead.innerHTML = `${nameOf(topId)} ยังไม่ขาดทุน · สายอื่นติดลบ`;
+  else lead.innerHTML = `ติดลบทุกสาย · ${nameOf(topId)} เสียน้อยสุด ${pctHtml}`;
   document.getElementById("leadSub").innerHTML = ["gemini", "jev"].filter((id) => a.arms[id])
     .map((id) => `${ARMS[id].name.replace(" AI", "")} อันดับ ${rows.findIndex(([x]) => x === id) + 1}`)
     .join(" · ") + ` จาก ${rows.length} สาย`;
