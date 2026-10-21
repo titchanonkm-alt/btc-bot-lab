@@ -84,3 +84,21 @@ describe("site data for several AI arms", () => {
     expect(d.ai).toEqual({ decisions: 2, errors: 1 });
   });
 });
+
+describe("site stats", () => {
+  const eqRun = (at: string, eq: number, trade = false): Rows => ({
+    runs: [[at, "BTC", at, 82000, 0, "ok"]],
+    decisions: [],
+    trades: trade ? [[at, "count", "BTC", "ema", "buy", 82000, 0.0036, 15, "x"]] : [],
+    equity: [[at, "count", "BTC", "ema", eq, eq, "asset"]],
+  });
+
+  it("tracks the worst fall from a peak and counts trades", () => {
+    let d = buildSiteData(null, state(), eqRun("t1", 10000, true), "t1");
+    for (const [t, eq] of [["t2", 10500], ["t3", 9975], ["t4", 10800], ["t5", 10260]] as const) {
+      d = buildSiteData(d, state(), eqRun(t, eq, t === "t3"), t);
+    }
+    // 10500 -> 9975 is -5%; 10800 -> 10260 is also -5% exactly, so -5 stays the worst.
+    expect(d.stats!.BTC!.ema).toEqual({ peak: 10800, maxDrawdownPct: -5, trades: 2 });
+  });
+});

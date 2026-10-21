@@ -20,6 +20,17 @@ export interface SiteData {
   ai: { decisions: number; errors: number };
   /** The same, per AI arm. */
   aiByArm?: Record<string, { decisions: number; errors: number }>;
+  /** Per asset, per arm, since the phase started (never trimmed with the history). */
+  stats?: Record<string, Record<string, ArmStats>>;
+}
+
+export interface ArmStats {
+  /** Highest equity (THB, with costs) seen so far. */
+  peak: number;
+  /** Largest fall from a previous peak, as a negative percentage, e.g. -3.2. */
+  maxDrawdownPct: number;
+  /** Buys plus sells. */
+  trades: number;
 }
 
 export interface SiteTrade {
@@ -95,6 +106,19 @@ export function buildSiteData(
       per.decisions++;
       if (failed) per.errors++;
     }
+  }
+
+  // Peak, worst fall from peak and trade count per arm, kept from the start of the phase.
+  for (const [, , asset, arm, eq] of rows.equity) {
+    const st = (((data.stats ??= {})[str(asset)] ??= {})[str(arm)] ??= { peak: num(eq), maxDrawdownPct: 0, trades: 0 });
+    const e = num(eq);
+    if (!Number.isFinite(e)) continue;
+    st.peak = Math.max(st.peak, e);
+    st.maxDrawdownPct = Math.min(st.maxDrawdownPct, Math.round((e / st.peak - 1) * 10000) / 100);
+  }
+  for (const [, , asset, arm] of rows.trades) {
+    const st = (((data.stats ??= {})[str(asset)] ??= {})[str(arm)] ??= { peak: NaN, maxDrawdownPct: 0, trades: 0 });
+    st.trades++;
   }
 
   // Equity rows exist only for candles that were actually decided; each adds one history point.
