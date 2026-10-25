@@ -26,12 +26,14 @@ meaning (up/down, which arm).
   **อันดับ** = equity → overview · **ตอนนี้** = now → price → trades · **สถิติ** = calendar → stats.
   The last page is remembered. Tapping changes page and scrolls to the top; sideways swipes still switch asset.
   The top bar wraps to: brand + theme toggle, then full-width asset tabs, then phase/status/updated.
-- **Asset-switch motion** (tabs and swipes alike): a sideways page swipe. While dragging, the cards follow the
+- **Asset-switch motion on a computer** (mouse: `(hover: hover) and (pointer: fine)`): no animation; tabs and ←/→ switch
+  instantly (Nan, 25 Oct: the slide was dizzying on a big screen).
+- **Asset-switch motion on a phone/tablet** (tabs and swipes alike): a sideways page swipe. While dragging, the cards follow the
   finger (rubber band at 25% past the first/last asset). Release past 70px or flicked faster than 0.5px/ms: the
   page moves 60% of its width away and fades in 170 ms, then the next asset slides in from the opposite side
   over 420 ms, cubic-bezier(.22,1,.36,1), its rows fading in 22 ms apart. Otherwise it springs back in 300 ms.
   The top bar stays still. Reduced-motion users get an instant switch. On a computer the ← and → keys
-  switch asset with the same slide (no wrap).
+  switch asset instantly (no wrap).
 - **Live BTC:** the page reads Coinbase's public ticker; on the BTC tab the big price, 24 h change, the forming
   candle and the equity of arms holding BTC follow it each second, marked by a green "ราคาสด" pill and
   a blinking green dot before "กำไร/ขาดทุน" in the board header. Display only; the bot and the equity chart use closed candles.
