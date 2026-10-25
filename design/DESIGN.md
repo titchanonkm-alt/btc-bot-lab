@@ -1,6 +1,6 @@
 # Results page — design reference
 
-The look of `docs/index.html` as approved by Nan on 21 Oct 2026 (calendar, stats, theme toggle and phone pages added 25 Oct). Any change or new section must keep
+The look of `docs/index.html` as approved by Nan on 21 Oct 2026 (calendar, stats, theme toggle and phone pages approved by Nan after trying them live on 25 Oct 2026). Any change or new section must keep
 this look. Reference screenshots: `reference-desktop.png`, `reference-mobile.png` (simulated data).
 
 **Spirit:** a calm, plain dashboard that a non-trader understands at a glance (layout modelled on the
