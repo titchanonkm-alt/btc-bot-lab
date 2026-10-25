@@ -668,7 +668,10 @@ let switching = false;
 const gridEl = () => document.querySelector(".grid");
 const assetKeys = () => Object.keys(ASSETS);
 
+// On a computer (mouse) tabs and arrow keys switch instantly: Nan found the slide dizzying there.
+const pcInstant = () => matchMedia("(hover: hover) and (pointer: fine)").matches;
 function slideTo(next, fromX = 0) {
+  if (fromX === 0 && pcInstant()) { asset = next; store.set("asset", asset); return render(); }
   const keys = assetKeys();
   const dir = keys.indexOf(next) > keys.indexOf(asset) ? 1 : -1; // 1 = next page comes from the right
   const grid = gridEl();
