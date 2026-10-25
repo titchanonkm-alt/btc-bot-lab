@@ -1,4 +1,5 @@
 import type { BotState, Rows } from "./engine.js";
+import { CONFIG } from "./config.js";
 import type { Candle } from "./types.js";
 
 /**
@@ -31,6 +32,17 @@ export interface ArmStats {
   maxDrawdownPct: number;
   /** Buys plus sells. */
   trades: number;
+  /** Round trips finished (bought, then sold). */
+  closed?: number;
+  /** Closed round trips that ended with more money than before the buy. */
+  wins?: number;
+  /** Sum of THB won on winning round trips and lost on losing ones (positive numbers). */
+  grossWin?: number;
+  grossLoss?: number;
+  /** Equity when last in cash, i.e. the money a round trip started with. */
+  flatEq?: number;
+  /** Whether the arm held the asset after the last decided candle. */
+  inTrade?: boolean;
 }
 
 export interface SiteTrade {
@@ -109,15 +121,33 @@ export function buildSiteData(
   }
 
   // Peak, worst fall from peak and trade count per arm, kept from the start of the phase.
-  for (const [, , asset, arm, eq] of rows.equity) {
-    const st = (((data.stats ??= {})[str(asset)] ??= {})[str(arm)] ??= { peak: num(eq), maxDrawdownPct: 0, trades: 0 });
+  for (const [, , asset, arm, eq, , holding] of rows.equity) {
+    const st = (((data.stats ??= {})[str(asset)] ??= {})[str(arm)] ??= { peak: num(eq), maxDrawdownPct: 0, trades: 0, closed: 0, wins: 0, grossWin: 0, grossLoss: 0 });
     const e = num(eq);
     if (!Number.isFinite(e)) continue;
     st.peak = Math.max(st.peak, e);
     st.maxDrawdownPct = Math.min(st.maxDrawdownPct, Math.round((e / st.peak - 1) * 10000) / 100);
+    // A round trip's result is the cash after the sell minus the cash before the buy, so costs are included.
+    const holdingNow = str(holding) === "asset";
+    if (holdingNow) {
+      st.flatEq ??= CONFIG.startThb;
+    } else {
+      if (st.inTrade && st.flatEq !== undefined) {
+        const pnl = Math.round((e - st.flatEq) * 100) / 100;
+        st.closed = (st.closed ?? 0) + 1;
+        if (pnl > 0) {
+          st.wins = (st.wins ?? 0) + 1;
+          st.grossWin = Math.round(((st.grossWin ?? 0) + pnl) * 100) / 100;
+        } else {
+          st.grossLoss = Math.round(((st.grossLoss ?? 0) - pnl) * 100) / 100;
+        }
+      }
+      st.flatEq = e;
+    }
+    st.inTrade = holdingNow;
   }
   for (const [, , asset, arm] of rows.trades) {
-    const st = (((data.stats ??= {})[str(asset)] ??= {})[str(arm)] ??= { peak: NaN, maxDrawdownPct: 0, trades: 0 });
+    const st = (((data.stats ??= {})[str(asset)] ??= {})[str(arm)] ??= { peak: NaN, maxDrawdownPct: 0, trades: 0, closed: 0, wins: 0, grossWin: 0, grossLoss: 0 });
     st.trades++;
   }
 

@@ -1,6 +1,6 @@
 # Results page — design reference
 
-The look of `docs/index.html` as approved by Nan on 21 Oct 2026. Any change or new section must keep
+The look of `docs/index.html` as approved by Nan on 21 Oct 2026 (calendar, stats, theme toggle and phone pages added 25 Oct). Any change or new section must keep
 this look. Reference screenshots: `reference-desktop.png`, `reference-mobile.png` (simulated data).
 
 **Spirit:** a calm, plain dashboard that a non-trader understands at a glance (layout modelled on the
@@ -10,7 +10,7 @@ meaning (up/down, which arm).
 ## Layout
 
 - Max width 1400px, 16px page padding, 16px gap everywhere.
-- Top bar, one row: brand (orange "AI" square + "AI vs กฎง่ายๆ") → asset tabs (segmented control,
+- Top bar, one row: brand (orange "AI" square + "AI vs กฎง่ายๆ") → theme toggle ("สว่าง | มืด" segmented control) → asset tabs (segmented control,
   coloured dot per asset) → right side: phase badge, status pill ("ทำงานอยู่" / "หยุดอัปเดต"), "อัปเดต … ที่แล้ว".
 - Desktop grid, 2 columns (2.1fr / 1fr):
 
@@ -19,8 +19,13 @@ meaning (up/down, which arm).
   | price card | "now" card |
   | equity card | trades card |
   | equity card | overview card |
+  | calendar card | stats card |
 
-- Mobile (≤ 900px), one column in this order: equity → now → price → trades → overview.
+- Mobile (≤ 900px): three short pages instead of one long scroll, picked from a bar fixed to the bottom of the
+  screen (text buttons, selected = `--soft` background, weight 600, a 18×3px orange bar above the label):
+  **อันดับ** = equity → overview · **ตอนนี้** = now → price → trades · **สถิติ** = calendar → stats.
+  The last page is remembered. Tapping changes page and scrolls to the top; sideways swipes still switch asset.
+  The top bar wraps to: brand + theme toggle, then full-width asset tabs, then phase/status/updated.
 - **Asset-switch motion** (tabs and swipes alike): a sideways page swipe. While dragging, the cards follow the
   finger (rubber band at 25% past the first/last asset). Release past 70px or flicked faster than 0.5px/ms: the
   page moves 60% of its width away and fades in 170 ms, then the next asset slides in from the opposite side
@@ -54,7 +59,8 @@ Arm colours (same arm = same colour everywhere: dots, lines, markers, names):
 `ta #d79a00` (dark `#ffd166`) · `hold #8c8a82` (dark `#a3a29a`).
 Asset dots: BTC `#f7931a` · gold `#d4a72c` · USD/THB `#2e7d5b`.
 
-Dark mode follows the system setting (`prefers-color-scheme`); light is the default.
+Dark mode follows the system setting (`prefers-color-scheme`) until the reader picks สว่าง or มืด; the choice is
+remembered per browser (`data-theme` on `<html>`). Charts are rebuilt in the new colours on switching.
 
 ## Type
 
@@ -79,6 +85,15 @@ Dark mode follows the system setting (`prefers-color-scheme`); light is the defa
 - Rows inside cards are separated by 1px `--line` top borders, never zebra stripes.
 - **Leader line** (equity card): name a leader only when one arm is strictly ahead and above 0%; otherwise
   say "ยังเสมอกันทุกสาย", "เสมอกัน N สาย", "… ยังไม่ขาดทุน · สายอื่นติดลบ" or "ติดลบทุกสาย · … เสียน้อยสุด".
+- **Daily P/L calendar** (calendar card): title "กำไร/ขาดทุนรายวัน (%) · asset" with the 28-day range on the right, arm
+  chips (one arm at a time), a Mon–Sun grid plus a "สัปดาห์" total column. A day = end-of-day equity (Thai date) vs
+  the previous day's. Cells: `--up-bg`/`--down-bg` with coloured text for moves under 1%, solid `--up`/`--down` with white
+  text for 1% or more, `--card` with border at 0 or no data, dashed `--soft` "ตลาดปิด" for gold/FX weekends.
+  Phone cells show one decimal without "%". Below: three `--soft` boxes วันที่บวก · วันดีสุด · วันแย่สุด.
+- **Trade stats** (stats card): columns สาย · ปิดไม้ · ชนะ % · PF · ค่าธรรมเนียม. A round trip's result = cash after the
+  sell − cash before the buy (costs included). PF = total won ÷ total lost, "–" until there is a loss; green ≥ 1, red < 1.
+  ค่าธรรมเนียม = equity without costs − equity with costs, shown as "−฿433" in red. Rows with fewer than 5 closed
+  trades are faded (opacity .55). A short dim footnote explains the columns.
 - **Leaderboard** (equity card): small dim header row, columns rank · arm · ถือ/เงินสด tag · เงินในพอร์ต ·
   กำไร/ขาดทุน · ร่วงหนักสุด (max drawdown, red when below 0) · เทรด (count). On mobile the เงินในพอร์ต column hides.
 
@@ -105,6 +120,7 @@ Dark mode follows the system setting (`prefers-color-scheme`); light is the defa
 
 - Do keep the footer disclaimer ("ผลที่ผ่านมาไม่ได้รับประกันผลในอนาคต · ไม่ใช่คำแนะนำการลงทุน") and the
   AI answer-rate figure (one line per AI arm).
+- Do make a plan and a mockup or demo, and get Nan's approval, before changing this page or this file.
 - Do keep everything in one HTML file with inline CSS/JS; only external resources are Google Fonts and
   lightweight-charts.
 - Don't add new colours for decoration, heavy shadows, gradients other than the AI box, emoji, or icons

@@ -55,6 +55,9 @@ No API keys live in this repository. Runtime keys come from GitHub Secrets.
 `docs/index.html` is published with GitHub Pages. After every run the bot rebuilds `data.json`
 (see `src/site.ts`) and the workflow force-pushes it as the only file on the `data` branch;
 the page reads it from there and refreshes every minute.
+Besides equity, it shows a daily profit/loss calendar per arm and, per arm, closed round trips, win rate,
+profit factor and money lost to trading costs. Readers can switch light/dark; on a phone the page is split
+into three short pages (อันดับ · ตอนนี้ · สถิติ).
 
 ## Clock
 
