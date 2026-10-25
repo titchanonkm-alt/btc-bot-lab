@@ -83,6 +83,18 @@ describe("technical-analysis arm", () => {
     expect(tp).toBeCloseTo(prev + 2 * (prev - low24));
   });
 
+  it("skips a setup whose 2R target cannot cover 3x the round-trip cost", () => {
+    const low24 = Math.min(...up.slice(-97, -1).map((x) => x.l));
+    const prev = up.at(-2)!.c;
+    const c = withLast(up, { o: prev - 2, l: low24, h: prev + 1, c: prev });
+    const targetPct = (2 * (prev - low24)) / prev;
+    // Cost just above the line: target < 3 x 2 x cost.
+    const tooDear = { ...ctx(c, false), costPerSide: targetPct / 6 + 0.0001 };
+    const fine = { ...ctx(c, false), costPerSide: targetPct / 6 - 0.0001 };
+    expect(run(taArm.decide(tooDear))).toMatchObject({ target: "cash", reason: "target too small for costs" });
+    expect(run(taArm.decide(fine)).target).toBe("asset");
+  });
+
   it("does not enter on a red candle", () => {
     const low24 = Math.min(...up.slice(-97, -1).map((x) => x.l));
     const prev = up.at(-2)!.c;

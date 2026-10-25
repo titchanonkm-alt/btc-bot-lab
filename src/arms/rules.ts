@@ -47,13 +47,15 @@ export const TA = {
   rewardRisk: 2,
   supportTolerance: 0.002, // "touched" the 24h low = low within 0.2% of it
   volumeLookback: 20,
+  // Only enter when the 2R target is at least 3x the round-trip trading cost, as a trader would.
+  minTargetCostMultiple: 3,
 };
 
 /**
  * Technical-analysis arm (confluence + stop loss):
  * trend (1h EMA20 > EMA50) + pullback (touch 24h low or RSI reclaims 40) + confirmation
- * (green candle, volume above its 20-candle average when volume exists). Exits at stop,
- * at 2R target, or when the 1h trend turns down.
+ * (green candle, volume above its 20-candle average when volume exists). Skips setups whose
+ * 2R target is under 3x the round-trip cost. Exits at stop, at 2R target, or when the 1h trend turns down.
  */
 export const taArm: Arm = {
   id: "ta",
@@ -100,6 +102,9 @@ export const taArm: Arm = {
     const sl = Math.min(...candles.slice(-TA.swingLookback).map((c) => c.l));
     const risk = last.c - sl;
     if (risk <= 0) return keep(ctx, "no room for a stop");
+    const targetPct = (TA.rewardRisk * risk) / last.c;
+    const roundTripCost = 2 * (ctx.costPerSide ?? 0);
+    if (targetPct < TA.minTargetCostMultiple * roundTripCost) return keep(ctx, "target too small for costs");
     return {
       target: "asset",
       reason: touchedSupport ? "pullback to 24h low, confirmed" : "rsi reclaimed 40, confirmed",

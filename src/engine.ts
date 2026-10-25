@@ -89,7 +89,7 @@ export async function stepAsset(
     const ab = next.arms[arm.id];
     if (!ab) continue;
     const holding = isHolding(ab.withCost);
-    const d = await arm.decide({ candles, holding, state: ab.armState });
+    const d = await arm.decide({ candles, holding, state: ab.armState, costPerSide: ab.withCost.costRate });
     let { withCost, noCost } = ab;
     const wantAsset = d.target === "asset";
     if (wantAsset !== holding) {
