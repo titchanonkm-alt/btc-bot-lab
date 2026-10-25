@@ -597,6 +597,17 @@ function switchAsset(next) {
   }, { passive: true });
 })();
 
+// Keyboard: ← and → move between assets on a computer, with the same slide as a swipe.
+addEventListener("keydown", (e) => {
+  if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+  if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || !data) return;
+  if (e.target.closest("input, textarea, select, [contenteditable]")) return;
+  const keys = assetKeys(), i = keys.indexOf(asset) + (e.key === "ArrowRight" ? 1 : -1);
+  if (i < 0 || i >= keys.length) return;
+  e.preventDefault();
+  switchAsset(keys[i]);
+});
+
 load();
 setInterval(load, 60000);
 </script>
