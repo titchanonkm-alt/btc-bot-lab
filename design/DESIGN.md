@@ -21,12 +21,16 @@ meaning (up/down, which arm).
   | equity card | overview card |
 
 - Mobile (≤ 900px), one column in this order: equity → now → price → trades → overview.
+- **Asset-switch motion** (tabs and swipes alike): old cards fade, blur 6px and shrink to 98.5% in 140 ms; the
+  new cards then fade up 12px from blur in reading order, 55 ms apart, 420 ms each, easing
+  cubic-bezier(.22,1,.36,1); rows inside (leaderboard, trades, arm list, AI lines) follow 30 ms apart.
+  No sideways slide. Reduced-motion users get an instant switch.
 - **Live BTC:** the page reads Coinbase's public ticker; on the BTC tab the big price, 24 h change, the forming
   candle and the equity of arms holding BTC follow it each second, marked by a green "ราคาสด" pill and
   a blinking green dot before "กำไร/ขาดทุน" in the board header. Display only; the bot and the equity chart use closed candles.
   Gold and USD/THB stay on 15-minute data.
-- Swiping left/right anywhere on the page switches asset (BTC → ทองคำ → USD/THB, no wrap) with a short
-  slide-in of the cards; swipes that start on the tabs, range toggle or marker chips are ignored.
+- Swiping left/right anywhere on the page switches asset (BTC → ทองคำ → USD/THB, no wrap) with the asset-switch
+  motion below; swipes that start on the tabs, range toggle or marker chips are ignored.
 - New sections are new cards in this grid. Never full-bleed bands, never a hero section.
 
 ## Tokens
