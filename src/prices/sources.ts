@@ -98,5 +98,22 @@ export async function candlesFor(asset: AssetId, deps: PriceDeps): Promise<Candl
     }
   }
   if (!deps.twelveDataKey) throw new Error("MARKET_DATA_KEY is not set");
-  return twelveData(deps.fetcher, asset, deps.twelveDataKey, deps.now);
+  // Twelve Data keeps quoting gold and USD/THB over the weekend while nobody can trade them;
+  // those candles are dropped, so the bot neither trades nor computes indicators on them.
+  return (await twelveData(deps.fetcher, asset, deps.twelveDataKey, deps.now)).filter((c) => fxMarketOpen(c.t));
+}
+
+/**
+ * Gold and FX trade 24 hours on weekdays and close for the weekend: from Friday 21:00 UTC
+ * (17:00 New York) until Sunday evening. Sunday is treated as closed until 23:00 UTC, which
+ * covers the reopening both with and without US daylight saving time.
+ */
+export function fxMarketOpen(t: number): boolean {
+  const d = new Date(t);
+  const day = d.getUTCDay();
+  const hour = d.getUTCHours();
+  if (day === 6) return false;
+  if (day === 5 && hour >= 21) return false;
+  if (day === 0 && hour < 23) return false;
+  return true;
 }

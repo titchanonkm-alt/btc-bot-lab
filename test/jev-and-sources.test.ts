@@ -228,3 +228,29 @@ describe("gemini arm timeouts", () => {
     expect(d).toMatchObject({ target: "asset", reason: "error: timeout after 2 tries" });
   });
 });
+
+describe("gold and FX market hours", () => {
+  const at = (iso: string) => Date.parse(iso);
+  it("is open on weekdays and closed from Friday 21:00 to Sunday 23:00 UTC", async () => {
+    const { fxMarketOpen } = await import("../src/prices/sources.js");
+    expect(fxMarketOpen(at("2026-10-23T20:45:00Z"))).toBe(true); // Friday
+    expect(fxMarketOpen(at("2026-10-23T21:00:00Z"))).toBe(false); // Friday close
+    expect(fxMarketOpen(at("2026-10-24T12:00:00Z"))).toBe(false); // Saturday
+    expect(fxMarketOpen(at("2026-10-25T22:45:00Z"))).toBe(false); // Sunday before reopen
+    expect(fxMarketOpen(at("2026-10-25T23:00:00Z"))).toBe(true); // Sunday reopen
+    expect(fxMarketOpen(at("2026-10-26T00:00:00Z"))).toBe(true); // Monday
+  });
+
+  it("drops weekend candles from Twelve Data but keeps BTC's", async () => {
+    const { candlesFor } = await import("../src/prices/sources.js");
+    const rows = ["2026-10-23 20:45:00", "2026-10-24 12:00:00", "2026-10-26 00:00:00"].map((datetime) => ({
+      datetime, open: "1", high: "1", low: "1", close: "1",
+    }));
+    const c = await candlesFor("XAU", {
+      fetcher: json({ status: "ok", values: rows }),
+      now: Date.parse("2026-10-26T01:00:00Z"),
+      twelveDataKey: "k",
+    });
+    expect(c.map((x) => new Date(x.t).toISOString())).toEqual(["2026-10-23T20:45:00.000Z", "2026-10-26T00:00:00.000Z"]);
+  });
+});

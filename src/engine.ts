@@ -1,6 +1,6 @@
 import { CONFIG } from "./config.js";
 import { buyAll, equity, isHolding, newLedger, sellAll, type Ledger } from "./ledger.js";
-import { QUARTER } from "./prices/sources.js";
+import { QUARTER, fxMarketOpen } from "./prices/sources.js";
 import type { Arm, AssetId, Candle } from "./types.js";
 
 export type Phase = "shakedown" | "count";
@@ -81,7 +81,7 @@ export async function stepAsset(
     rows.runs.push([runAt, asset, iso(last.t), last.c, 0, "no new candle"]);
     return book;
   }
-  const missed = book.lastCandle === null ? 0 : Math.max(0, (last.t - book.lastCandle) / QUARTER - 1);
+  const missed = book.lastCandle === null ? 0 : missedCandles(asset, book.lastCandle, last.t);
   rows.runs.push([runAt, asset, iso(last.t), last.c, missed, "ok"]);
 
   const next: AssetBook = { ...book, lastCandle: last.t, arms: { ...book.arms } };
@@ -125,3 +125,10 @@ export async function stepAsset(
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
+
+/** Candles that should have been decided between two decided ones; a closed market's weekend does not count. */
+export function missedCandles(asset: AssetId, from: number, to: number): number {
+  let n = 0;
+  for (let t = from + QUARTER; t < to; t += QUARTER) if (asset === "BTC" || fxMarketOpen(t)) n++;
+  return n;
+}

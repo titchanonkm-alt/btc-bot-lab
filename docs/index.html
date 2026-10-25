@@ -219,6 +219,9 @@ const pct = (eq) => Math.round((eq / START - 1) * 10000) / 100 || 0;
 const signPct = (p) => (p > 0 ? "+" : p < 0 ? "−" : "") + fmt(Math.abs(p), 2) + "%";
 const cls = (p) => (p > 0 ? "up" : p < 0 ? "down" : "dim");
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+// Same rule as the bot: gold and FX close from Friday 21:00 to Sunday 23:00 UTC.
+const fxOpen = (t) => { const d = new Date(t), day = d.getUTCDay(), h = d.getUTCHours();
+  return !(day === 6 || (day === 5 && h >= 21) || (day === 0 && h < 23)); };
 const sec = (iso) => Math.floor(new Date(iso).getTime() / 1000) + TH_OFFSET;
 const hhmm = (iso) => new Date(iso).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Bangkok" });
 const store = { get: (k, d) => { try { return localStorage.getItem(k) ?? d; } catch (e) { return d; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} } };
@@ -293,7 +296,7 @@ function renderPrice() {
   const c = a.candles || [];
   const last = c.at(-1);
   document.getElementById("price").textContent = last ? fmt(last[4], meta.dp) : "–";
-  document.getElementById("assetName").textContent = meta.name + " · แท่งละ 15 นาที";
+  document.getElementById("assetName").textContent = meta.name + " · แท่งละ 15 นาที" + (asset !== "BTC" && !fxOpen(Date.now()) ? " · ตลาดปิดช่วงเสาร์–อาทิตย์ บอทพักสินทรัพย์นี้" : "");
   const dayAgo = c.length > 96 ? c[c.length - 97][4] : c[0]?.[1];
   const ch = last && dayAgo ? (last[4] / dayAgo - 1) * 100 : NaN;
   const chEl = document.getElementById("change");
