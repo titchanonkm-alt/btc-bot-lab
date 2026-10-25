@@ -99,6 +99,31 @@ describe("site stats", () => {
       d = buildSiteData(d, state(), eqRun(t, eq, t === "t3"), t);
     }
     // 10500 -> 9975 is -5%; 10800 -> 10260 is also -5% exactly, so -5 stays the worst.
-    expect(d.stats!.BTC!.ema).toEqual({ peak: 10800, maxDrawdownPct: -5, trades: 2 });
+    expect(d.stats!.BTC!.ema).toMatchObject({ peak: 10800, maxDrawdownPct: -5, trades: 2 });
+  });
+  it("counts round trips, wins and profit factor from cash before the buy and after the sell", () => {
+    const step = (at: string, eq: number, holding: string, side?: string): Rows => ({
+      runs: [[at, "BTC", at, 82000, 0, "ok"]],
+      decisions: [[at, "count", "BTC", "rsi", at, holding, "x"]],
+      trades: side ? [[at, "count", "BTC", "rsi", side, 82000, 0.001, 15, "x"]] : [],
+      equity: [[at, "count", "BTC", "rsi", eq, eq, holding]],
+    });
+    let d = buildSiteData(null, state(), step("c1", 10000, "cash"), "c1");
+    d = buildSiteData(d, state(), step("c2", 9985, "asset", "buy"), "c2");
+    d = buildSiteData(d, state(), step("c3", 10300, "asset"), "c3");
+    d = buildSiteData(d, state(), step("c4", 10200, "cash", "sell"), "c4"); // +200 win
+    d = buildSiteData(d, state(), step("c5", 10185, "asset", "buy"), "c5");
+    d = buildSiteData(d, state(), step("c6", 10050, "cash", "sell"), "c6"); // -150 loss
+    expect(d.stats!.BTC!.rsi).toMatchObject({ trades: 4, closed: 2, wins: 1, grossWin: 200, grossLoss: 150, inTrade: false, flatEq: 10050 });
+  });
+
+  it("treats an arm that holds from the first candle as having bought with the starting money", () => {
+    const step = (at: string, eq: number, holding: string): Rows => ({
+      runs: [[at, "BTC", at, 82000, 0, "ok"]], decisions: [], trades: [],
+      equity: [[at, "count", "BTC", "ta", eq, eq, holding]],
+    });
+    let d = buildSiteData(null, state(), step("c1", 9985, "asset"), "c1");
+    d = buildSiteData(d, state(), step("c2", 9900, "cash"), "c2");
+    expect(d.stats!.BTC!.ta).toMatchObject({ closed: 1, wins: 0, grossLoss: 100 });
   });
 });

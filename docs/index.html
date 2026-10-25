@@ -36,6 +36,12 @@
       --ema: #4cc9f0; --rsi: #b59bff; --jev: #2dd4bf; --ta: #ffd166; --hold: #a3a29a;
     }
   }
+  :root[data-theme="dark"] {
+      --bg: #0e0f11; --card: #16171a; --line: #26282c; --soft: #1c1d21;
+      --ink: #ecebe6; --dim: #8d8c86; --up: #3ccf91; --up-bg: #12301f; --down: #ff6b5f; --down-bg: #3a1714;
+      --ema: #4cc9f0; --rsi: #b59bff; --jev: #2dd4bf; --ta: #ffd166; --hold: #a3a29a;
+  }
+  :root { color-scheme: light; } :root[data-theme="dark"] { color-scheme: dark; }
   * { box-sizing: border-box; }
   html, body { margin: 0; background: var(--bg); color: var(--ink); }
   body { font-family: "IBM Plex Sans Thai", system-ui, sans-serif; line-height: 1.5; -webkit-font-smoothing: antialiased; }
@@ -59,10 +65,28 @@
   .phase.count { background: var(--up); }
 
   /* grid */
-  .grid { display: grid; grid-template-columns: minmax(0, 2.1fr) minmax(0, 1fr); grid-template-areas: "price now" "equity trades" "equity overview"; gap: 16px; }
+  .grid { display: grid; grid-template-columns: minmax(0, 2.1fr) minmax(0, 1fr); grid-template-areas: "price now" "equity trades" "equity overview" "calendar stats"; gap: 16px; }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px 22px; min-width: 0; }
   .card h3 { margin: 0 0 12px; font-size: 15px; font-weight: 600; }
-  .price { grid-area: price; } .equity { grid-area: equity; } .now { grid-area: now; } .trades { grid-area: trades; } .overview { grid-area: overview; }
+  .price { grid-area: price; } .equity { grid-area: equity; } .now { grid-area: now; } .trades { grid-area: trades; } .overview { grid-area: overview; } .calendar { grid-area: calendar; } .stats-card { grid-area: stats; }
+  /* daily P/L calendar */
+  .cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)) minmax(0, 1.1fr); gap: 6px; margin-top: 12px; }
+  .cal .dow { font-size: 12px; color: var(--dim); text-align: center; padding-bottom: 2px; }
+  .cal .day { border: 1px solid var(--line); border-radius: 10px; min-height: 58px; padding: 6px 8px; display: flex; flex-direction: column; justify-content: space-between; background: var(--card); }
+  .cal .day .d { font-size: 11px; color: var(--dim); }
+  .cal .day .v { font-size: 13px; font-weight: 600; text-align: right; }
+  .cal .day.up { background: var(--up-bg); border-color: transparent; } .cal .day.up .v { color: var(--up); }
+  .cal .day.up2 { background: var(--up); border-color: transparent; } .cal .day.up2 .v, .cal .day.up2 .d { color: #fff; }
+  .cal .day.down { background: var(--down-bg); border-color: transparent; } .cal .day.down .v { color: var(--down); }
+  .cal .day.down2 { background: var(--down); border-color: transparent; } .cal .day.down2 .v, .cal .day.down2 .d { color: #fff; }
+  .cal .day.off { background: var(--soft); border-style: dashed; } .cal .day.off .v { color: var(--dim); font-weight: 400; font-size: 11px; }
+  .cal .day.empty { background: transparent; border-color: transparent; }
+  .cal .wk { border-radius: 10px; background: var(--soft); padding: 6px 8px; display: flex; flex-direction: column; justify-content: space-between; min-height: 58px; }
+  .cal .wk .d { font-size: 11px; color: var(--dim); } .cal .wk .v { font-size: 13px; font-weight: 600; text-align: right; }
+  .calsum { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px; }
+  .calsum div { background: var(--soft); border-radius: 10px; padding: 8px 10px; } .calsum .k { font-size: 12px; color: var(--dim); } .calsum .v { font-weight: 600; }
+  .dim2 { opacity: .55; }
+  @media (max-width: 900px) { .cal { gap: 4px; } .cal .day, .cal .wk { min-height: 46px; padding: 4px 5px; border-radius: 8px; } .cal .day .v, .cal .wk .v { font-size: 11px; } }
 
   .price-head { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
   .big { font-size: clamp(36px, 5vw, 52px); font-weight: 600; line-height: 1.05; letter-spacing: -0.02em; }
@@ -126,8 +150,29 @@
   .grid { touch-action: pan-y; will-change: transform; }
   body { overflow-x: hidden; }
 
+  .theme button { padding: 4px 10px; }
+  .views { display: none; }
   @media (max-width: 900px) {
-    .grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "equity" "now" "price" "trades" "overview"; }
+    .brand { flex: 1; }
+    .theme { order: 0; }
+    .tabs { order: 1; width: 100%; } .tabs button { flex: 1; justify-content: center; }
+    .status { order: 2; }
+    .wrap { padding-bottom: 92px; }
+    body[data-view] .grid { display: flex; flex-direction: column; }
+    body[data-view] .grid > .card { display: none; }
+    .now { order: 1; } .price { order: 2; } .trades { order: 3; } .calendar { order: 4; } .stats-card { order: 5; }
+    body[data-view="rank"] .grid > [data-v~="rank"],
+    body[data-view="now"] .grid > [data-v~="now"],
+    body[data-view="stats"] .grid > [data-v~="stats"] { display: block; }
+    .views { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; gap: 6px;
+      padding: 8px 16px calc(8px + env(safe-area-inset-bottom)); background: var(--card); border-top: 1px solid var(--line); }
+    .views button { flex: 1; border: 0; background: none; font: inherit; font-size: 14px; color: var(--dim); padding: 9px 0; border-radius: 10px; cursor: pointer; }
+    .views button[aria-pressed="true"] { background: var(--soft); color: var(--ink); font-weight: 600; }
+    .views button[aria-pressed="true"]::before { content: ""; display: block; width: 18px; height: 3px; border-radius: 2px; background: var(--hot); margin: -4px auto 5px; }
+    footer { display: block; } footer span { display: block; margin-top: 4px; }
+  }
+  @media (max-width: 900px) {
+    .grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "equity" "now" "price" "calendar" "stats" "trades" "overview"; }
     .status { margin-left: 0; width: 100%; }
     .hl { text-align: left; }
     .chart { height: 260px; }
@@ -142,6 +187,7 @@
 <div class="wrap">
   <div class="top">
     <div class="brand"><span class="mark">AI</span>AI vs กฎง่ายๆ</div>
+    <div class="seg theme" id="theme" aria-label="โหมดสี"><button data-t="light">สว่าง</button><button data-t="dark">มืด</button></div>
     <nav class="tabs" id="tabs" aria-label="เลือกสินทรัพย์"></nav>
     <div class="status">
       <span id="phase" class="phase">—</span>
@@ -151,7 +197,7 @@
   </div>
 
   <div class="grid">
-    <section class="card price">
+    <section class="card price" data-v="now">
       <div class="price-head">
         <div>
           <div class="big num"><span id="price">–</span> <span id="livePill" class="livepill" hidden>ราคาสด</span></div>
@@ -163,7 +209,7 @@
       <div class="chips" id="markerChips"><span>ลูกศรบนกราฟ = จุดซื้อขายของ</span></div>
     </section>
 
-    <section class="card equity">
+    <section class="card equity" data-v="rank">
       <div class="eq-head">
         <div>
           <h3 style="margin-bottom:4px">เงินในพอร์ต · <span id="eqAsset"></span></h3>
@@ -180,18 +226,18 @@
       <table class="board" id="board"></table>
     </section>
 
-    <section class="card now">
+    <section class="card now" data-v="now">
       <h3>ตอนนี้บอทแต่ละสายทำอะไรอยู่</h3>
       <div class="think" id="think"></div>
       <ul class="arms" id="arms"></ul>
     </section>
 
-    <section class="card trades">
+    <section class="card trades" data-v="now">
       <h3 style="display:flex;justify-content:space-between">การเทรดล่าสุด <span class="sub" id="tradeCount"></span></h3>
       <ul class="tlist" id="tlist"></ul>
     </section>
 
-    <section class="card overview">
+    <section class="card overview" data-v="rank">
       <h3>ภาพรวม</h3>
       <div class="stats">
         <div><div class="k">เริ่มนับ</div><div class="v" id="started">–</div></div>
@@ -201,8 +247,23 @@
       </div>
       <p class="sub" style="margin:14px 0 0">ทุกสายซื้อหมดหน้าตักหรือถือเงินสดหมด คิดค่าธรรมเนียมตามช่องทางที่คนไทยใช้จริง: กระดานคริปโตไทย ร้านทอง และเรทเงินโอนธนาคาร · <a href="https://github.com/titchanonkm-alt/btc-bot-lab" style="color:inherit">โค้ดทั้งหมด</a></p>
     </section>
+    <section class="card calendar" data-v="stats">
+      <h3 style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><span>กำไร/ขาดทุนรายวัน (%) · <span id="calAsset"></span></span><span class="sub" id="calRange"></span></h3>
+      <div class="chips" id="calChips"></div>
+      <div class="cal" id="cal"></div>
+      <div class="calsum" id="calSum"></div>
+    </section>
+
+    <section class="card stats-card" data-v="stats">
+      <h3>สถิติการเทรดต่อสาย · <span id="stAsset"></span></h3>
+      <table class="board" id="statsTable"></table>
+      <p class="sub" style="margin:10px 0 0">นับเฉพาะไม้ที่ปิดแล้ว (ซื้อแล้วขาย) · PF = กำไรรวม ÷ ขาดทุนรวม มากกว่า 1 คือกำไร · ค่าธรรมเนียม = เงินที่หายไปเทียบกับกรณีไม่มีค่าธรรมเนียม · สีจาง = ไม้ยังน้อยกว่า 5 สรุปไม่ได้</p>
+    </section>
   </div>
 
+  <nav class="views" id="views" aria-label="เลือกหน้า">
+    <button data-view="rank">อันดับ</button><button data-view="now">ตอนนี้</button><button data-view="stats">สถิติ</button>
+  </nav>
   <footer>
     <span>บอทเทรดกระดาษ 6 สาย ใช้ราคาตลาดจริง ไม่ใช่เงินจริง · ตัวเลขอัปเดตเองทุก 15 นาที · เวลาไทย</span>
     <span>ผลที่ผ่านมาไม่ได้รับประกันผลในอนาคต · ไม่ใช่คำแนะนำการลงทุน</span>
@@ -295,7 +356,7 @@ function render() {
   const ph = document.getElementById("phase");
   ph.textContent = counting ? "นับผลจริง" : "ทดลองระบบ · ยังไม่นับ";
   ph.classList.toggle("count", counting);
-  renderTabs(); renderPrice(); renderEquity(); renderNow(); renderTrades(); renderOverview();
+  renderTabs(); renderPrice(); renderEquity(); renderNow(); renderTrades(); renderOverview(); renderCalendar(); renderStats();
 }
 
 function renderTabs() {
@@ -459,6 +520,78 @@ function renderTrades() {
   }).join("") : `<li class="empty">ยังไม่มีการซื้อขาย</li>`;
 }
 
+let calArm = store.get("calArm", "gemini");
+const thDay = (iso) => new Date(new Date(iso).getTime() + 7 * 3600e3).toISOString().slice(0, 10); // Thai calendar date
+// Phone calendar cells are narrow: one decimal, no % sign (the card title says it is %).
+const narrow = () => matchMedia("(max-width: 900px)").matches;
+const calPct = (v) => narrow() ? (v > 0.05 ? "+" : v < -0.05 ? "−" : "") + fmt(Math.abs(v), 1) : signPct(v);
+function renderCalendar() {
+  document.getElementById("calAsset").textContent = ASSETS[asset].tab;
+  const chips = document.getElementById("calChips");
+  chips.innerHTML = Object.entries(ARMS).map(([id, m]) =>
+    `<button class="chip" data-a="${id}" aria-pressed="${id === calArm}" style="${id === calArm ? "color:" + color(id) : ""}">${m.name}</button>`).join("");
+  chips.querySelectorAll("button").forEach((b) => b.onclick = () => { calArm = b.dataset.a; store.set("calArm", calArm); renderCalendar(); });
+  const h = data.history[asset], s = h?.arms[calArm];
+  const cal = document.getElementById("cal"), sum = document.getElementById("calSum");
+  if (!s) { cal.innerHTML = ""; sum.innerHTML = ""; return; }
+  const end = new Map();                      // Thai date -> equity at the end of that day
+  h.t.forEach((t, i) => { if (Number.isFinite(s[i])) end.set(thDay(t), s[i]); });
+  const day0 = thDay(data.startedAt), dayN = thDay(data.updatedAt);
+  const pct = new Map(); let prev = START;
+  for (let d = new Date(day0 + "T00:00:00Z"); d.toISOString().slice(0, 10) <= dayN; d.setUTCDate(d.getUTCDate() + 1)) {
+    const k = d.toISOString().slice(0, 10);
+    if (end.has(k)) { pct.set(k, (end.get(k) / prev - 1) * 100); prev = end.get(k); }
+  }
+  const first = new Date(day0 + "T00:00:00Z"), mon = new Date(first); mon.setUTCDate(first.getUTCDate() - ((first.getUTCDay() + 6) % 7));
+  const lastDay = new Date(first); lastDay.setUTCDate(first.getUTCDate() + 27);
+  document.getElementById("calRange").textContent = [first, lastDay].map((x) => x.toLocaleDateString("th-TH", { day: "numeric", month: "short", timeZone: "UTC" })).join(" – ");
+  let html = ["จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส.", "อา."].map((x) => `<div class="dow">${x}</div>`).join("") + `<div class="dow">สัปดาห์</div>`;
+  const weeks = Math.ceil(((lastDay - mon) / 86400000 + 1) / 7);
+  for (let w = 0; w < weeks; w++) {
+    let wk = 1, any = false;
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(mon); d.setUTCDate(mon.getUTCDate() + w * 7 + i);
+      const k = d.toISOString().slice(0, 10), n = d.getUTCDate();
+      if (d < first || d > lastDay) { html += `<div class="day empty"></div>`; continue; }
+      const closed = asset !== "BTC" && (i === 5 || i === 6);
+      if (pct.has(k)) {
+        const v = pct.get(k); wk *= 1 + v / 100; any = true;
+        const c = v > 1 ? "up2" : v > 0.005 ? "up" : v < -1 ? "down2" : v < -0.005 ? "down" : "";
+        html += `<div class="day ${c}"><span class="d">${n}</span><span class="v num">${calPct(v)}</span></div>`;
+      } else if (closed && k <= dayN) html += `<div class="day off"><span class="d">${n}</span><span class="v">${narrow() ? "ปิด" : "ตลาดปิด"}</span></div>`;
+      else html += `<div class="day"><span class="d">${n}</span><span class="v"></span></div>`;
+    }
+    const wv = (wk - 1) * 100;
+    html += `<div class="wk"><span class="d">W${w + 1}</span><span class="v num ${any ? cls(wv) : "dim"}">${any ? calPct(wv) : "–"}</span></div>`;
+  }
+  cal.innerHTML = html;
+  const vals = [...pct.entries()];
+  const best = vals.reduce((a, b) => (b[1] > a[1] ? b : a), ["", -Infinity]), worst = vals.reduce((a, b) => (b[1] < a[1] ? b : a), ["", Infinity]);
+  const dn = (k) => Number(k.slice(8));
+  sum.innerHTML = vals.length ? `<div><div class="k">วันที่บวก</div><div class="v num">${vals.filter(([, v]) => v > 0.005).length} / ${vals.length}</div></div>
+    <div><div class="k">วันดีสุด</div><div class="v num up">${signPct(best[1])} (${dn(best[0])})</div></div>
+    <div><div class="k">วันแย่สุด</div><div class="v num down">${signPct(worst[1])} (${dn(worst[0])})</div></div>` : "";
+}
+
+function renderStats() {
+  document.getElementById("stAsset").textContent = ASSETS[asset].tab;
+  const a = data.assets[asset], st = (data.stats || {})[asset] || {};
+  const head = `<tr class="head"><td>สาย</td><td class="r">ปิดไม้</td><td class="r">ชนะ</td><td class="r">PF</td><td class="r">ค่าธรรมเนียม</td></tr>`;
+  document.getElementById("statsTable").innerHTML = head + Object.keys(ARMS).filter((id) => a?.arms[id]).map((id) => {
+    const s = st[id] || {}, r = a.arms[id];
+    const closed = s.closed || 0, few = closed < 5;
+    const win = closed ? (s.wins / closed) * 100 : NaN;
+    // No losing trade yet means no profit factor yet, shown as "–".
+    const pf = s.grossLoss > 0 ? s.grossWin / s.grossLoss : NaN;
+    const fee = Math.max(0, r.equityNoCost - r.equity);
+    return `<tr class="${few ? "dim2" : ""}"><td><span class="dot" style="background:${color(id)}"></span>${ARMS[id].name}</td>
+      <td class="r num">${fmt(closed)}</td>
+      <td class="r num">${Number.isFinite(win) ? fmt(win, 0) + "%" : "–"}</td>
+      <td class="r num ${pf >= 1 ? "up" : pf < 1 ? "down" : "dim"}">${Number.isFinite(pf) ? fmt(pf, 2) : "–"}</td>
+      <td class="r num ${fee > 0.5 ? "down" : "dim"}">${fee > 0.5 ? "−฿" + fmt(fee) : "฿0"}</td></tr>`;
+  }).join("");
+}
+
 function renderOverview() {
   const start = new Date(data.startedAt);
   const days = Math.floor((Date.now() - start) / 86400000) + 1;
@@ -526,6 +659,7 @@ function pollLive() {
 }
 setInterval(tickLive, 1000);
 
+
 // Sideways swipe between BTC, gold and USD/THB. The cards follow the finger; a long or quick enough
 // swipe carries the page off to the side and the next asset slides in from the other side, otherwise
 // it springs back. Tab clicks use the same slide. Swipes starting on the tabs, range toggle or chips are ignored.
@@ -567,7 +701,7 @@ function switchAsset(next) {
 (() => {
   let x0 = null, y0 = 0, t0 = 0, dragging = false, dx = 0;
   addEventListener("touchstart", (e) => {
-    if (switching || e.touches.length !== 1 || e.target.closest(".tabs, .seg, .chips")) { x0 = null; return; }
+    if (switching || e.touches.length !== 1 || e.target.closest(".tabs, .seg, .chips, .views")) { x0 = null; return; }
     x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; t0 = performance.now(); dragging = false; dx = 0;
   }, { passive: true });
   addEventListener("touchmove", (e) => {
@@ -608,6 +742,24 @@ addEventListener("keydown", (e) => {
   switchAsset(keys[i]);
 });
 
+// Theme: follows the system until the reader picks one; the choice is remembered.
+const sysDark = matchMedia("(prefers-color-scheme: dark)");
+function applyTheme(t) {
+  if (t) document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme;
+  const cur = t || (sysDark.matches ? "dark" : "light");
+  document.querySelectorAll("#theme button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.t === cur)));
+  if (candleChart) { candleChart.remove(); eqChart.remove(); candleChart = eqChart = null; eqSeries = {}; if (data) render(); }
+}
+applyTheme(store.get("theme", "") || (new URLSearchParams(location.search).get("theme") ?? ""));
+document.getElementById("theme").addEventListener("click", (e) => { const t = e.target.dataset.t; if (!t) return; store.set("theme", t); applyTheme(t); });
+sysDark.addEventListener("change", () => { if (!store.get("theme", "")) applyTheme(""); });
+// Phone: three short pages instead of one long scroll.
+function setView(v) {
+  document.body.dataset.view = v; store.set("view", v);
+  document.querySelectorAll("#views button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.view === v)));
+}
+setView(new URLSearchParams(location.search).get("view") || store.get("view", "rank"));
+document.getElementById("views").addEventListener("click", (e) => { const v = e.target.dataset.view; if (!v) return; setView(v); scrollTo({ top: 0 }); });
 load();
 setInterval(load, 60000);
 </script>
