@@ -25,7 +25,8 @@ meaning (up/down, which arm).
   finger (rubber band at 25% past the first/last asset). Release past 70px or flicked faster than 0.5px/ms: the
   page moves 60% of its width away and fades in 170 ms, then the next asset slides in from the opposite side
   over 420 ms, cubic-bezier(.22,1,.36,1), its rows fading in 22 ms apart. Otherwise it springs back in 300 ms.
-  The top bar stays still. Reduced-motion users get an instant switch.
+  The top bar stays still. Reduced-motion users get an instant switch. On a computer the ← and → keys
+  switch asset with the same slide (no wrap).
 - **Live BTC:** the page reads Coinbase's public ticker; on the BTC tab the big price, 24 h change, the forming
   candle and the equity of arms holding BTC follow it each second, marked by a green "ราคาสด" pill and
   a blinking green dot before "กำไร/ขาดทุน" in the board header. Display only; the bot and the equity chart use closed candles.
