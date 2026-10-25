@@ -10,7 +10,7 @@ No real money. Every trade is simulated on real market prices and logged to a Go
 | --- | --- |
 | EMA | Hold while EMA 20 is above EMA 50 (15-minute closes) |
 | RSI | Buy when RSI 14 < 30, sell when > 70 |
-| Technical analyst | 1h uptrend + pullback (24h low or RSI reclaims 40) + green candle + volume, stop loss and 2R target |
+| Technical analyst | 1h uptrend + pullback (24h low or RSI reclaims 40) + green candle + volume, stop loss and 2R target; skips setups whose target is under 3x the round-trip cost |
 | Jev (AI) | TypeSafe's decision model via OpenRouter (`typesafe/jev-1.14`); same question, data and 60% rule as Gemini |
 | Gemini (AI) | Gemini Flash-Lite decides hold/cash from the last 8 hours of candles + indicators; acts only at ≥ 60% confidence |
 | Buy and hold | Buy once, never sell — the yardstick |

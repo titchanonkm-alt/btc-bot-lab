@@ -20,6 +20,8 @@ export interface ArmContext {
   holding: boolean;
   /** Arm-specific memory carried between runs (stored in the Sheet's State tab). */
   state: Record<string, number>;
+  /** Trading cost per side for this asset, as a fraction (e.g. 0.005 for 0.5%). */
+  costPerSide?: number;
 }
 
 export interface Decision {
