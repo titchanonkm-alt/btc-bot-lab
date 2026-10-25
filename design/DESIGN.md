@@ -21,6 +21,12 @@ meaning (up/down, which arm).
   | equity card | overview card |
 
 - Mobile (≤ 900px), one column in this order: equity → now → price → trades → overview.
+- **Live BTC:** the page reads Coinbase's public ticker; on the BTC tab the big price, 24 h change, the forming
+  candle and the equity of arms holding BTC follow it each second, marked by a green "ราคาสด" pill and
+  a blinking green dot before "กำไร/ขาดทุน" in the board header. Display only; the bot and the equity chart use closed candles.
+  Gold and USD/THB stay on 15-minute data.
+- Swiping left/right anywhere on the page switches asset (BTC → ทองคำ → USD/THB, no wrap) with a short
+  slide-in of the cards; swipes that start on the tabs, range toggle or marker chips are ignored.
 - New sections are new cards in this grid. Never full-bleed bands, never a hero section.
 
 ## Tokens

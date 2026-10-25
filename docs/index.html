@@ -83,7 +83,10 @@
   .board { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 14px; }
   .board td { padding: 9px 4px; border-top: 1px solid var(--line); }
   .board .r { text-align: right; }
-  .board .head td { font-size: 12px; color: var(--dim); border-top: 0; padding-bottom: 4px; }
+  .board .head td { font-size: 12px; color: var(--dim); border-top: 0; padding-bottom: 4px; white-space: nowrap; }
+  .board td { white-space: nowrap; }
+  .livedot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--up); margin-right: 5px;
+    vertical-align: 1px; animation: blink 1.6s infinite; }
   .dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 8px; vertical-align: -1px; }
   .tag { display: inline-block; font-size: 11px; border-radius: 5px; padding: 0 6px; background: var(--soft); color: var(--dim); border: 1px solid var(--line); }
   .tag.in { background: var(--up-bg); color: var(--up); border-color: transparent; }
@@ -113,6 +116,17 @@
   footer a { color: inherit; }
   .empty { color: var(--dim); font-size: 14px; padding: 12px 0; }
 
+  .livepill { font-family: "IBM Plex Sans Thai", sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 0;
+    color: var(--up); background: var(--up-bg); border-radius: 999px; padding: 3px 10px 3px 8px; vertical-align: middle; }
+  .livepill::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--up);
+    margin-right: 6px; vertical-align: 1px; animation: blink 1.6s infinite; }
+  @keyframes blink { 50% { opacity: .25; } }
+  @media (prefers-reduced-motion: reduce) { .livepill::before { animation: none; } }
+  .swap-l { animation: swapL .22s ease-out; } .swap-r { animation: swapR .22s ease-out; }
+  @keyframes swapL { from { opacity: .4; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+  @keyframes swapR { from { opacity: .4; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .swap-l, .swap-r { animation: none; } }
+
   @media (max-width: 900px) {
     .grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "equity" "now" "price" "trades" "overview"; }
     .status { margin-left: 0; width: 100%; }
@@ -120,6 +134,8 @@
     .chart { height: 260px; }
     .board .eqc { display: none; }
     .board { font-size: 13px; }
+    .board td { padding: 9px 3px; }
+    .board .head td { font-size: 11px; }
   }
 </style>
 </head>
@@ -139,7 +155,7 @@
     <section class="card price">
       <div class="price-head">
         <div>
-          <div class="big num" id="price">–</div>
+          <div class="big num"><span id="price">–</span> <span id="livePill" class="livepill" hidden>ราคาสด</span></div>
           <div class="sub"><span id="assetName"></span> · <span id="change" class="num"></span></div>
         </div>
         <div class="hl num" id="hilo"></div>
@@ -295,10 +311,12 @@ function renderPrice() {
   const meta = ASSETS[asset];
   const c = a.candles || [];
   const last = c.at(-1);
-  document.getElementById("price").textContent = last ? fmt(last[4], meta.dp) : "–";
+  const nowPrice = liveOn() ? live.price : last?.[4];
+  document.getElementById("price").textContent = Number.isFinite(nowPrice) ? fmt(nowPrice, meta.dp) : "–";
+  document.getElementById("livePill").hidden = !liveOn();
   document.getElementById("assetName").textContent = meta.name + " · แท่งละ 15 นาที" + (asset !== "BTC" && !fxOpen(Date.now()) ? " · ตลาดปิดช่วงเสาร์–อาทิตย์ บอทพักสินทรัพย์นี้" : "");
   const dayAgo = c.length > 96 ? c[c.length - 97][4] : c[0]?.[1];
-  const ch = last && dayAgo ? (last[4] / dayAgo - 1) * 100 : NaN;
+  const ch = Number.isFinite(nowPrice) && dayAgo ? (nowPrice / dayAgo - 1) * 100 : NaN;
   const chEl = document.getElementById("change");
   chEl.textContent = Number.isFinite(ch) ? "24 ชม. " + signPct(ch) : "";
   chEl.className = "num " + cls(ch);
@@ -321,6 +339,7 @@ function renderPrice() {
       }))
       .sort((x, y) => x.time - y.time);
     candleSeries.setMarkers(markers);
+    if (liveOn()) applyLiveCandle();
     candleChart.timeScale().fitContent();
   }
 
@@ -331,9 +350,22 @@ function renderPrice() {
 }
 
 function renderEquity() {
+  renderBoard();
+  renderEquityChart();
+}
+
+/** Equity shown on the board: BTC arms that hold BTC follow the live price between bot runs. */
+function shownEquity(r) {
+  const a = data.assets[asset];
+  if (!liveOn() || r.holding !== "asset" || !a?.price) return r.equity;
+  return r.equity * (live.price / a.price);
+}
+
+function renderBoard() {
   document.getElementById("eqAsset").textContent = ASSETS[asset].tab;
   const a = data.assets[asset];
-  const rows = a ? Object.entries(a.arms).sort((x, y) => y[1].equity - x[1].equity) : [];
+  const rows = a ? Object.entries(a.arms).map(([id, r]) => [id, { ...r, equity: shownEquity(r) }])
+    .sort((x, y) => y[1].equity - x[1].equity) : [];
   const lead = document.getElementById("lead");
   if (!rows.length) { lead.textContent = "รอแท่งราคาแรก"; document.getElementById("board").innerHTML = ""; return; }
   const [topId, top] = rows[0];
@@ -352,7 +384,7 @@ function renderEquity() {
     .join(" · ") + ` จาก ${rows.length} สาย`;
   const stats = (data.stats || {})[asset] || {};
 
-  const head = `<tr class="head"><td></td><td>สาย</td><td></td><td class="r eqc">เงินในพอร์ต</td><td class="r">กำไร/ขาดทุน</td>
+  const head = `<tr class="head"><td></td><td>สาย</td><td></td><td class="r eqc">เงินในพอร์ต</td><td class="r">${liveOn() ? '<span class="livedot" title="ราคาสด"></span>' : ""}กำไร/ขาดทุน</td>
     <td class="r">ร่วงหนักสุด</td><td class="r">เทรด</td></tr>`;
   document.getElementById("board").innerHTML = head + rows.map(([id, r], i) => {
     const q = pct(r.equity);
@@ -365,6 +397,11 @@ function renderEquity() {
       <td class="r num">${fmt(st.trades ?? 0)}</td></tr>`;
   }).join("");
 
+}
+
+function renderEquityChart() {
+  const a = data.assets[asset];
+  if (!a || !Object.keys(a.arms).length) return;
   if (!eqChart) return;
   for (const s of Object.values(eqSeries)) eqChart.removeSeries(s);
   eqSeries = {};
@@ -444,6 +481,78 @@ document.getElementById("range").querySelectorAll("button").forEach((b) => b.onc
   document.querySelectorAll("#range button").forEach((x) => x.setAttribute("aria-pressed", x === b));
   renderEquity();
 });
+// Live BTC price from Coinbase's public feed (no key). Display only: the bot still decides on
+// closed 15-minute candles, so the page marks these numbers "ราคาสด" until the next bot run.
+const live = { price: NaN, at: 0, candle: null };
+const liveOn = () => asset === "BTC" && Number.isFinite(live.price) && Date.now() - live.at < 30000;
+function applyLiveCandle() {
+  const q = 15 * 60 * 1000;
+  const start = Math.floor(live.at / q) * q;
+  const lastClosed = data?.assets.BTC?.candles?.at(-1);
+  if (!lastClosed || start <= lastClosed[0]) return;
+  if (!live.candle || live.candle.start !== start) live.candle = { start, o: live.price, h: live.price, l: live.price };
+  const k = live.candle;
+  k.h = Math.max(k.h, live.price); k.l = Math.min(k.l, live.price);
+  candleSeries.update({ time: Math.floor(start / 1000) + TH_OFFSET, open: k.o, high: k.h, low: k.l, close: live.price });
+}
+function tickLive() {
+  if (!data || asset !== "BTC") return;
+  const on = liveOn();
+  document.getElementById("livePill").hidden = !on;
+  if (!on) return;
+  document.getElementById("price").textContent = fmt(live.price, ASSETS.BTC.dp);
+  const c = data.assets.BTC?.candles || [];
+  const dayAgo = c.length > 96 ? c[c.length - 97][4] : c[0]?.[1];
+  if (dayAgo) {
+    const ch = (live.price / dayAgo - 1) * 100, el = document.getElementById("change");
+    el.textContent = "24 ชม. " + signPct(ch); el.className = "num " + cls(ch);
+  }
+  if (candleSeries) applyLiveCandle();
+  renderBoard();
+}
+(function connectLive(failures = 0) {
+  let ws;
+  try { ws = new WebSocket("wss://ws-feed.exchange.coinbase.com"); } catch (e) { return pollLive(); }
+  ws.onopen = () => { failures = 0; ws.send(JSON.stringify({ type: "subscribe", product_ids: ["BTC-USD"], channels: ["ticker"] })); };
+  ws.onmessage = (m) => {
+    try { const d = JSON.parse(m.data); if (d.type === "ticker" && d.price) { live.price = Number(d.price); live.at = Date.now(); } } catch (e) {}
+  };
+  ws.onclose = () => (failures >= 3 ? pollLive() : setTimeout(() => connectLive(failures + 1), 5000));
+})();
+// Fallback when the socket keeps failing: ask for the last trade every 10 seconds.
+function pollLive() {
+  const get = () => fetch("https://api.exchange.coinbase.com/products/BTC-USD/ticker")
+    .then((r) => r.json()).then((d) => { if (d.price) { live.price = Number(d.price); live.at = Date.now(); } }).catch(() => {});
+  get(); setInterval(get, 10000);
+}
+setInterval(tickLive, 1000);
+
+// Swipe left/right anywhere on the page (phones) to move between BTC, gold and USD/THB.
+// Charts have scrolling turned off, so a horizontal swipe over them also switches asset.
+(() => {
+  let x0 = null, y0 = null;
+  addEventListener("touchstart", (e) => {
+    if (e.touches.length !== 1 || e.target.closest(".tabs, .seg, .chips")) { x0 = null; return; }
+    x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
+  }, { passive: true });
+  addEventListener("touchend", (e) => {
+    if (x0 === null || !data) return;
+    const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
+    x0 = null;
+    if (Math.abs(dx) < 60 || Math.abs(dx) < 1.5 * Math.abs(dy)) return;
+    const keys = Object.keys(ASSETS);
+    const next = keys.indexOf(asset) + (dx < 0 ? 1 : -1);
+    if (next < 0 || next >= keys.length) return;
+    asset = keys[next];
+    store.set("asset", asset);
+    const grid = document.querySelector(".grid");
+    grid.classList.remove("swap-l", "swap-r");
+    void grid.offsetWidth;
+    grid.classList.add(dx < 0 ? "swap-l" : "swap-r");
+    render();
+  }, { passive: true });
+})();
+
 load();
 setInterval(load, 60000);
 </script>
