@@ -113,6 +113,11 @@
   footer a { color: inherit; }
   .empty { color: var(--dim); font-size: 14px; padding: 12px 0; }
 
+  .swap-l { animation: swapL .22s ease-out; } .swap-r { animation: swapR .22s ease-out; }
+  @keyframes swapL { from { opacity: .4; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+  @keyframes swapR { from { opacity: .4; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .swap-l, .swap-r { animation: none; } }
+
   @media (max-width: 900px) {
     .grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "equity" "now" "price" "trades" "overview"; }
     .status { margin-left: 0; width: 100%; }
@@ -444,6 +449,32 @@ document.getElementById("range").querySelectorAll("button").forEach((b) => b.onc
   document.querySelectorAll("#range button").forEach((x) => x.setAttribute("aria-pressed", x === b));
   renderEquity();
 });
+// Swipe left/right anywhere on the page (phones) to move between BTC, gold and USD/THB.
+// Charts have scrolling turned off, so a horizontal swipe over them also switches asset.
+(() => {
+  let x0 = null, y0 = null;
+  addEventListener("touchstart", (e) => {
+    if (e.touches.length !== 1 || e.target.closest(".tabs, .seg, .chips")) { x0 = null; return; }
+    x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
+  }, { passive: true });
+  addEventListener("touchend", (e) => {
+    if (x0 === null || !data) return;
+    const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
+    x0 = null;
+    if (Math.abs(dx) < 60 || Math.abs(dx) < 1.5 * Math.abs(dy)) return;
+    const keys = Object.keys(ASSETS);
+    const next = keys.indexOf(asset) + (dx < 0 ? 1 : -1);
+    if (next < 0 || next >= keys.length) return;
+    asset = keys[next];
+    store.set("asset", asset);
+    const grid = document.querySelector(".grid");
+    grid.classList.remove("swap-l", "swap-r");
+    void grid.offsetWidth;
+    grid.classList.add(dx < 0 ? "swap-l" : "swap-r");
+    render();
+  }, { passive: true });
+})();
+
 load();
 setInterval(load, 60000);
 </script>

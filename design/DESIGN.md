@@ -21,6 +21,8 @@ meaning (up/down, which arm).
   | equity card | overview card |
 
 - Mobile (≤ 900px), one column in this order: equity → now → price → trades → overview.
+- Swiping left/right anywhere on the page switches asset (BTC → ทองคำ → USD/THB, no wrap) with a short
+  slide-in of the cards; swipes that start on the tabs, range toggle or marker chips are ignored.
 - New sections are new cards in this grid. Never full-bleed bands, never a hero section.
 
 ## Tokens
