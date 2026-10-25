@@ -60,3 +60,14 @@ describe("stepAsset", () => {
     expect(book.arms.a!.withCost.cash).toBe(10_000);
   });
 });
+
+describe("missed candles", () => {
+  it("does not count a gold weekend as missed", async () => {
+    const { missedCandles } = await import("../src/engine.js");
+    const fri = Date.parse("2026-10-23T20:45:00Z");
+    const sunReopen = Date.parse("2026-10-25T23:00:00Z");
+    expect(missedCandles("XAU", fri, sunReopen)).toBe(0);
+    expect(missedCandles("BTC", fri, sunReopen)).toBe((sunReopen - fri) / 900_000 - 1);
+    expect(missedCandles("XAU", Date.parse("2026-10-26T00:00:00Z"), Date.parse("2026-10-26T00:45:00Z"))).toBe(2);
+  });
+});
