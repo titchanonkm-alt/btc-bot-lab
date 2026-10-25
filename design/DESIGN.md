@@ -21,10 +21,11 @@ meaning (up/down, which arm).
   | equity card | overview card |
 
 - Mobile (≤ 900px), one column in this order: equity → now → price → trades → overview.
-- **Asset-switch motion** (tabs and swipes alike): old cards fade, blur 6px and shrink to 98.5% in 140 ms; the
-  new cards then fade up 12px from blur in reading order, 55 ms apart, 420 ms each, easing
-  cubic-bezier(.22,1,.36,1); rows inside (leaderboard, trades, arm list, AI lines) follow 30 ms apart.
-  No sideways slide. Reduced-motion users get an instant switch.
+- **Asset-switch motion** (tabs and swipes alike): a sideways page swipe. While dragging, the cards follow the
+  finger (rubber band at 25% past the first/last asset). Release past 70px or flicked faster than 0.5px/ms: the
+  page moves 60% of its width away and fades in 170 ms, then the next asset slides in from the opposite side
+  over 420 ms, cubic-bezier(.22,1,.36,1), its rows fading in 22 ms apart. Otherwise it springs back in 300 ms.
+  The top bar stays still. Reduced-motion users get an instant switch.
 - **Live BTC:** the page reads Coinbase's public ticker; on the BTC tab the big price, 24 h change, the forming
   candle and the equity of arms holding BTC follow it each second, marked by a green "ราคาสด" pill and
   a blinking green dot before "กำไร/ขาดทุน" in the board header. Display only; the bot and the equity chart use closed candles.

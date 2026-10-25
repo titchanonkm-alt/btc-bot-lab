@@ -122,9 +122,9 @@
     margin-right: 6px; vertical-align: 1px; animation: blink 1.6s infinite; }
   @keyframes blink { 50% { opacity: .25; } }
   @media (prefers-reduced-motion: reduce) { .livepill::before { animation: none; } }
-  /* Asset switch: old cards fade and blur out fast, new ones settle in one after another. */
-  .grid.leaving > .card { opacity: 0; filter: blur(6px); transform: scale(.985);
-    transition: opacity .14s ease-in, filter .14s ease-in, transform .14s ease-in; }
+  /* The page swipes sideways between assets; vertical scrolling stays with the browser. */
+  .grid { touch-action: pan-y; will-change: transform; }
+  body { overflow-x: hidden; }
 
   @media (max-width: 900px) {
     .grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "equity" "now" "price" "trades" "overview"; }
@@ -526,58 +526,76 @@ function pollLive() {
 }
 setInterval(tickLive, 1000);
 
-// Swipe left/right anywhere on the page (phones) to move between BTC, gold and USD/THB.
-// Charts have scrolling turned off, so a horizontal swipe over them also switches asset.
-(() => {
-  let x0 = null, y0 = null;
-  addEventListener("touchstart", (e) => {
-    if (e.touches.length !== 1 || e.target.closest(".tabs, .seg, .chips")) { x0 = null; return; }
-    x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
-  }, { passive: true });
-  addEventListener("touchend", (e) => {
-    if (x0 === null || !data) return;
-    const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
-    x0 = null;
-    if (Math.abs(dx) < 60 || Math.abs(dx) < 1.5 * Math.abs(dy)) return;
-    const keys = Object.keys(ASSETS);
-    const next = keys.indexOf(asset) + (dx < 0 ? 1 : -1);
-    if (next < 0 || next >= keys.length) return;
-    switchAsset(keys[next]);
-  }, { passive: true });
-})();
-
-// Switch asset with the dashboard rhythm: ~140 ms fade/blur out, then cards and their rows
-// fade up into place one after another (~0.6 s in total). Tabs and swipes share it.
+// Sideways swipe between BTC, gold and USD/THB. The cards follow the finger; a long or quick enough
+// swipe carries the page off to the side and the next asset slides in from the other side, otherwise
+// it springs back. Tab clicks use the same slide. Swipes starting on the tabs, range toggle or chips are ignored.
+const EASE_OUT = "cubic-bezier(.22,1,.36,1)";
 let switching = false;
+const gridEl = () => document.querySelector(".grid");
+const assetKeys = () => Object.keys(ASSETS);
+
+function slideTo(next, fromX = 0) {
+  const keys = assetKeys();
+  const dir = keys.indexOf(next) > keys.indexOf(asset) ? 1 : -1; // 1 = next page comes from the right
+  const grid = gridEl();
+  const show = () => { asset = next; store.set("asset", asset); render(); };
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches || !grid.animate) { grid.style.transform = ""; return show(); }
+  switching = true;
+  const W = grid.clientWidth;
+  const out = grid.animate(
+    [{ transform: `translateX(${fromX}px)`, opacity: 1 }, { transform: `translateX(${-dir * W * 0.6}px)`, opacity: 0 }],
+    { duration: 170, easing: "cubic-bezier(.4,0,1,1)", fill: "forwards" },
+  );
+  out.onfinish = () => {
+    show();
+    out.cancel();
+    grid.style.transform = "";
+    grid.animate(
+      [{ transform: `translateX(${dir * W * 0.6}px)`, opacity: 0 }, { transform: "translateX(0)", opacity: 1 }],
+      { duration: 420, easing: EASE_OUT },
+    ).onfinish = () => { switching = false; };
+    grid.querySelectorAll(".board tr:not(.head), .tlist li, .arms li, .think .a").forEach((row, j) =>
+      row.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 260, delay: 120 + j * 22, easing: EASE_OUT, fill: "backwards" }));
+  };
+}
+
 function switchAsset(next) {
   if (next === asset || switching) return;
-  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const grid = document.querySelector(".grid");
-  const show = () => { asset = next; store.set("asset", asset); render(); };
-  if (reduce || !grid.animate) return show();
-  switching = true;
-  grid.classList.add("leaving");
-  setTimeout(() => {
-    show();
-    grid.classList.remove("leaving");
-    const ease = "cubic-bezier(.22,1,.36,1)";
-    const cards = [...grid.querySelectorAll(":scope > .card")]
-      .sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top || a.getBoundingClientRect().left - b.getBoundingClientRect().left);
-    cards.forEach((card, i) => {
-      const delay = i * 55;
-      card.animate(
-        [{ opacity: 0, transform: "translateY(12px)", filter: "blur(4px)" }, { opacity: 1, transform: "none", filter: "blur(0)" }],
-        { duration: 420, delay, easing: ease, fill: "backwards" },
-      );
-      card.querySelectorAll(".board tr:not(.head), .tlist li, .arms li, .think .a").forEach((row, j) =>
-        row.animate(
-          [{ opacity: 0, transform: "translateY(6px)" }, { opacity: 1, transform: "none" }],
-          { duration: 320, delay: delay + 90 + j * 30, easing: ease, fill: "backwards" },
-        ));
-    });
-    setTimeout(() => { switching = false; }, 250);
-  }, 140);
+  slideTo(next);
 }
+
+(() => {
+  let x0 = null, y0 = 0, t0 = 0, dragging = false, dx = 0;
+  addEventListener("touchstart", (e) => {
+    if (switching || e.touches.length !== 1 || e.target.closest(".tabs, .seg, .chips")) { x0 = null; return; }
+    x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; t0 = performance.now(); dragging = false; dx = 0;
+  }, { passive: true });
+  addEventListener("touchmove", (e) => {
+    if (x0 === null || !data) return;
+    const mx = e.touches[0].clientX - x0, my = e.touches[0].clientY - y0;
+    if (!dragging) {
+      if (Math.abs(mx) < 10 && Math.abs(my) < 10) return;
+      if (Math.abs(mx) < 1.2 * Math.abs(my)) { x0 = null; return; } // a vertical scroll: leave it alone
+      dragging = true;
+    }
+    const keys = assetKeys(), i = keys.indexOf(asset);
+    const edge = (mx > 0 && i === 0) || (mx < 0 && i === keys.length - 1);
+    dx = edge ? mx * 0.25 : mx; // rubber band at the first and last asset
+    gridEl().style.transform = `translateX(${dx}px)`;
+  }, { passive: true });
+  addEventListener("touchend", () => {
+    if (x0 === null || !dragging) { x0 = null; return; }
+    x0 = null;
+    const keys = assetKeys(), i = keys.indexOf(asset);
+    const speed = Math.abs(dx) / (performance.now() - t0);
+    const nextIdx = i + (dx < 0 ? 1 : -1);
+    const go = (Math.abs(dx) > 70 || speed > 0.5) && nextIdx >= 0 && nextIdx < keys.length;
+    if (go) return slideTo(keys[nextIdx], dx);
+    const grid = gridEl();
+    grid.animate([{ transform: `translateX(${dx}px)` }, { transform: "translateX(0)" }], { duration: 300, easing: EASE_OUT });
+    grid.style.transform = "";
+  }, { passive: true });
+})();
 
 load();
 setInterval(load, 60000);
