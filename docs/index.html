@@ -122,10 +122,9 @@
     margin-right: 6px; vertical-align: 1px; animation: blink 1.6s infinite; }
   @keyframes blink { 50% { opacity: .25; } }
   @media (prefers-reduced-motion: reduce) { .livepill::before { animation: none; } }
-  .swap-l { animation: swapL .22s ease-out; } .swap-r { animation: swapR .22s ease-out; }
-  @keyframes swapL { from { opacity: .4; transform: translateX(24px); } to { opacity: 1; transform: none; } }
-  @keyframes swapR { from { opacity: .4; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
-  @media (prefers-reduced-motion: reduce) { .swap-l, .swap-r { animation: none; } }
+  /* Asset switch: old cards fade and blur out fast, new ones settle in one after another. */
+  .grid.leaving > .card { opacity: 0; filter: blur(6px); transform: scale(.985);
+    transition: opacity .14s ease-in, filter .14s ease-in, transform .14s ease-in; }
 
   @media (max-width: 900px) {
     .grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "equity" "now" "price" "trades" "overview"; }
@@ -303,7 +302,7 @@ function renderTabs() {
   const nav = document.getElementById("tabs");
   nav.innerHTML = Object.entries(ASSETS).map(([k, a]) =>
     `<button data-k="${k}" aria-pressed="${k === asset}"><i style="background:${a.color}"></i>${a.tab}</button>`).join("");
-  nav.querySelectorAll("button").forEach((b) => b.onclick = () => { asset = b.dataset.k; store.set("asset", asset); render(); });
+  nav.querySelectorAll("button").forEach((b) => b.onclick = () => switchAsset(b.dataset.k));
 }
 
 function renderPrice() {
@@ -543,15 +542,42 @@ setInterval(tickLive, 1000);
     const keys = Object.keys(ASSETS);
     const next = keys.indexOf(asset) + (dx < 0 ? 1 : -1);
     if (next < 0 || next >= keys.length) return;
-    asset = keys[next];
-    store.set("asset", asset);
-    const grid = document.querySelector(".grid");
-    grid.classList.remove("swap-l", "swap-r");
-    void grid.offsetWidth;
-    grid.classList.add(dx < 0 ? "swap-l" : "swap-r");
-    render();
+    switchAsset(keys[next]);
   }, { passive: true });
 })();
+
+// Switch asset with the dashboard rhythm: ~140 ms fade/blur out, then cards and their rows
+// fade up into place one after another (~0.6 s in total). Tabs and swipes share it.
+let switching = false;
+function switchAsset(next) {
+  if (next === asset || switching) return;
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const grid = document.querySelector(".grid");
+  const show = () => { asset = next; store.set("asset", asset); render(); };
+  if (reduce || !grid.animate) return show();
+  switching = true;
+  grid.classList.add("leaving");
+  setTimeout(() => {
+    show();
+    grid.classList.remove("leaving");
+    const ease = "cubic-bezier(.22,1,.36,1)";
+    const cards = [...grid.querySelectorAll(":scope > .card")]
+      .sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top || a.getBoundingClientRect().left - b.getBoundingClientRect().left);
+    cards.forEach((card, i) => {
+      const delay = i * 55;
+      card.animate(
+        [{ opacity: 0, transform: "translateY(12px)", filter: "blur(4px)" }, { opacity: 1, transform: "none", filter: "blur(0)" }],
+        { duration: 420, delay, easing: ease, fill: "backwards" },
+      );
+      card.querySelectorAll(".board tr:not(.head), .tlist li, .arms li, .think .a").forEach((row, j) =>
+        row.animate(
+          [{ opacity: 0, transform: "translateY(6px)" }, { opacity: 1, transform: "none" }],
+          { duration: 320, delay: delay + 90 + j * 30, easing: ease, fill: "backwards" },
+        ));
+    });
+    setTimeout(() => { switching = false; }, 250);
+  }, 140);
+}
 
 load();
 setInterval(load, 60000);
