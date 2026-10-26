@@ -20,10 +20,12 @@ meaning (up/down, which arm).
   | equity card | trades card |
   | equity card | overview card |
   | calendar card | stats card |
+  | how card (full width) | |
 
 - Mobile (≤ 900px): three short pages instead of one long scroll, picked from a bar fixed to the bottom of the
   screen (text buttons, selected = `--soft` background, weight 600, a 18×3px orange bar above the label):
-  **อันดับ** = equity → overview · **ตอนนี้** = now → price → trades · **สถิติ** = calendar → stats.
+  **อันดับ** = equity → overview · **ตอนนี้** = now → price → trades · **สถิติ** = calendar → stats ·
+  **วิธีคิด** = how card.
   The last page is remembered. Tapping changes page and scrolls to the top; sideways swipes still switch asset.
   The top bar wraps to: brand + theme toggle, then full-width asset tabs, then phase/status/updated.
 - **Asset-switch motion on a computer** (mouse: `(hover: hover) and (pointer: fine)`): no animation; tabs and ←/→ switch
@@ -96,6 +98,14 @@ remembered per browser (`data-theme` on `<html>`). Charts are rebuilt in the new
   sell − cash before the buy (costs included). PF = total won ÷ total lost, "–" until there is a loss; green ≥ 1, red < 1.
   ค่าธรรมเนียม = equity without costs − equity with costs, shown as "−฿433" in red. Rows with fewer than 5 closed
   trades are faded (opacity .55). A short dim footnote explains the columns.
+- **How each arm decides** (how card, "แต่ละสายคิดและตัดสินใจยังไง"): a short dim intro (what happens every 15 minutes),
+  then one block per arm in the leaderboard's arm order: arm marker + name + small kind tag (AI in soft orange; กฎ and
+  เกณฑ์วัด in `--soft`), one plain sentence on what the arm is, then a dim-label list ดูอะไร / ซื้อเมื่อ / ขายเมื่อ /
+  ถ้าตอบไม่ได้ with the real numbers from the code. Footer row "กติกาเดียวกันทุกสาย" (start money, all-in/all-out,
+  costs per asset, 15-minute decisions, gold/FX weekend close). Computer: 3 columns (2 under 1100px), each arm in its own
+  `--soft` panel (1px `--line` border, radius 12, 16px 18px padding, 12px gap, a `--line` rule under the arm name).
+  Phone: one column, arms separated by 1px `--line` top borders, no panels. Keep the text in step with the code
+  whenever an arm's rules change.
 - **Leaderboard** (equity card): small dim header row, columns rank · arm · ถือ/เงินสด tag · เงินในพอร์ต ·
   กำไร/ขาดทุน · ร่วงหนักสุด (max drawdown, red when below 0) · เทรด (count). On mobile the เงินในพอร์ต column hides.
 
@@ -126,5 +136,5 @@ remembered per browser (`data-theme` on `<html>`). Charts are rebuilt in the new
 - Do keep everything in one HTML file with inline CSS/JS; only external resources are Google Fonts and
   lightweight-charts.
 - Don't add new colours for decoration, heavy shadows, gradients other than the AI box, emoji, or icons
-  beyond the coloured dots.
+  beyond the coloured dots (Nan reconsidered per-arm icons on 26 Oct and kept the dots).
 - Don't use another site's name, logo or text.

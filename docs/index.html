@@ -65,10 +65,10 @@
   .phase.count { background: var(--up); }
 
   /* grid */
-  .grid { display: grid; grid-template-columns: minmax(0, 2.1fr) minmax(0, 1fr); grid-template-areas: "price now" "equity trades" "equity overview" "calendar stats"; gap: 16px; }
+  .grid { display: grid; grid-template-columns: minmax(0, 2.1fr) minmax(0, 1fr); grid-template-areas: "price now" "equity trades" "equity overview" "calendar stats" "how how"; gap: 16px; }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px 22px; min-width: 0; }
   .card h3 { margin: 0 0 12px; font-size: 15px; font-weight: 600; }
-  .price { grid-area: price; } .equity { grid-area: equity; } .now { grid-area: now; } .trades { grid-area: trades; } .overview { grid-area: overview; } .calendar { grid-area: calendar; } .stats-card { grid-area: stats; }
+  .price { grid-area: price; } .equity { grid-area: equity; } .now { grid-area: now; } .trades { grid-area: trades; } .overview { grid-area: overview; } .calendar { grid-area: calendar; } .stats-card { grid-area: stats; } .how { grid-area: how; }
   /* daily P/L calendar */
   .cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)) minmax(0, 1.1fr); gap: 6px; margin-top: 12px; }
   .cal .dow { font-size: 12px; color: var(--dim); text-align: center; padding-bottom: 2px; }
@@ -172,7 +172,7 @@
     footer { display: block; } footer span { display: block; margin-top: 4px; }
   }
   @media (max-width: 900px) {
-    .grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "equity" "now" "price" "calendar" "stats" "trades" "overview"; }
+    .grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "equity" "now" "price" "calendar" "stats" "trades" "overview" "how"; }
     .status { margin-left: 0; width: 100%; }
     .hl { text-align: left; }
     .chart { height: 260px; }
@@ -180,6 +180,30 @@
     .board { font-size: 13px; }
     .board td { padding: 9px 3px; }
     .board .head td { font-size: 11px; }
+  }
+  /* how each arm decides */
+  .how-intro { font-size: 14px; color: var(--dim); margin: -4px 0 14px; max-width: 80ch; }
+  .how-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 28px; }
+  .arm-how { border-top: 1px solid var(--line); padding: 14px 0 16px; min-width: 0; }
+  .arm-how h4 { margin: 0; font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 0; }
+  .arm-how .kind { margin-left: 8px; font-size: 11px; font-weight: 500; border-radius: 5px; padding: 0 6px; background: var(--soft); color: var(--dim); border: 1px solid var(--line); }
+  .arm-how .kind.ai { background: rgba(255,91,31,.10); color: var(--hot); border-color: transparent; }
+  .arm-how .who { font-size: 14px; margin: 6px 0 10px; }
+  .arm-how dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; font-size: 13px; }
+  .arm-how dt { color: var(--dim); white-space: nowrap; }
+  .arm-how dd { margin: 0; }
+  .arm-how code { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px; background: var(--soft); border-radius: 4px; padding: 0 4px; }
+  .rules { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--dim); border-top: 1px solid var(--line); padding-top: 12px; margin-top: 2px; }
+  .rules b { color: var(--ink); font-weight: 600; }
+  @media (max-width: 1100px) { .how-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 900px) { .how-grid { grid-template-columns: minmax(0, 1fr); } body[data-view="how"] .grid > [data-v~="how"] { display: block; } .how { order: 6; } }
+  /* each arm in its own panel, so the six read as separate blocks on a computer */
+  @media (min-width: 901px) {
+    .how-grid { gap: 12px; }
+    .arm-how { background: var(--soft); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
+    .arm-how h4 { padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+    .arm-how .kind, .arm-how code { background: var(--card); }
+    .rules { border-top: 0; margin-top: 14px; padding-top: 0; }
   }
 </style>
 </head>
@@ -259,10 +283,45 @@
       <table class="board" id="statsTable"></table>
       <p class="sub" style="margin:10px 0 0">นับเฉพาะไม้ที่ปิดแล้ว (ซื้อแล้วขาย) · PF = กำไรรวม ÷ ขาดทุนรวม มากกว่า 1 คือกำไร · ค่าธรรมเนียม = เงินที่หายไปเทียบกับกรณีไม่มีค่าธรรมเนียม · สีจาง = ไม้ยังน้อยกว่า 5 สรุปไม่ได้</p>
     </section>
+    <section class="card how" data-v="how" id="how">
+      <h3>แต่ละสายคิดและตัดสินใจยังไง</h3>
+      <p class="how-intro">ทุก 15 นาที บอทส่งแท่งเทียนล่าสุดให้ทั้ง 6 สาย แต่ละสายตอบแค่ว่า "ถือสินทรัพย์" หรือ "ถือเงินสด" ถ้าคำตอบต่างจากที่ถืออยู่ก็ซื้อหมดหรือขายหมดที่ราคาปิดของแท่งนั้น สองสายเป็น AI ที่ไม่ได้ถูกสอนเรื่องตลาดมาโดยเฉพาะ อีกสามสายเป็นกฎง่ายๆ ที่เขียนไว้ตายตัว และอีกสายคือซื้อแล้วถือไว้เฉยๆ เป็นเกณฑ์วัด</p>
+      <div class="how-grid">
+        <div class="arm-how"><h4><span class="dot" style="background:var(--gemini)"></span>Gemini AI<span class="kind ai">AI</span></h4>
+          <p class="who">โมเดลภาษาของ Google (Gemini 3.5 Flash-Lite) อ่านข้อมูลตลาดแล้วตอบว่าควรถืออะไร พร้อมความมั่นใจ</p>
+          <dl><dt>ดูอะไร</dt><dd>แท่งเทียน 15 นาทีย้อนหลัง 8 ชม. · EMA 20/50 · RSI 14 · ตอนนี้ถืออยู่ไหม กำไรค้างเท่าไร</dd>
+          <dt>ซื้อ/ขายเมื่อ</dt><dd>ให้น้ำหนักฝั่งตรงข้ามกับที่ถืออยู่ตั้งแต่ <b>60%</b> ขึ้นไป ต่ำกว่านั้นถือต่อ</dd>
+          <dt>ถ้าตอบไม่ได้</dt><dd>ถือแบบเดิมไว้ ไม่ซื้อไม่ขาย และนับเป็น "ตอบไม่ได้"</dd></dl></div>
+        <div class="arm-how"><h4><span class="dot" style="background:var(--jev)"></span>Jev AI<span class="kind ai">AI</span></h4>
+          <p class="who">โมเดลตัดสินใจ Jev 1.14 ผ่าน OpenRouter ถูกสร้างมาให้เลือกคำตอบจากตัวเลือก และบอกความน่าจะเป็นของแต่ละข้อ</p>
+          <dl><dt>ดูอะไร</dt><dd>ข้อมูลชุดเดียวกับ Gemini ทุกตัว เพื่อให้เทียบกันได้ยุติธรรม</dd>
+          <dt>ซื้อ/ขายเมื่อ</dt><dd>ความน่าจะเป็นฝั่งตรงข้ามตั้งแต่ <b>60%</b> ขึ้นไป</dd>
+          <dt>ถ้าตอบไม่ได้</dt><dd>ถือแบบเดิมไว้ เหมือน Gemini</dd></dl></div>
+        <div class="arm-how"><h4><span class="dot" style="background:var(--ema)"></span>EMA<span class="kind">กฎ</span></h4>
+          <p class="who">ตามเทรนด์: ถือเมื่อราคาเฉลี่ยระยะสั้นอยู่เหนือระยะยาว</p>
+          <dl><dt>ดูอะไร</dt><dd>เส้นค่าเฉลี่ย <code>EMA 20</code> กับ <code>EMA 50</code> ของแท่ง 15 นาที</dd>
+          <dt>ซื้อเมื่อ</dt><dd>EMA 20 อยู่เหนือ EMA 50</dd>
+          <dt>ขายเมื่อ</dt><dd>EMA 20 ลงมาต่ำกว่า EMA 50</dd></dl></div>
+        <div class="arm-how"><h4><span class="dot" style="background:var(--rsi)"></span>RSI<span class="kind">กฎ</span></h4>
+          <p class="who">สวนตลาด: ซื้อตอนราคาลงแรงเกินไป ขายตอนขึ้นแรงเกินไป</p>
+          <dl><dt>ดูอะไร</dt><dd>ค่า <code>RSI 14</code> (0–100 วัดว่าช่วงหลังขึ้นหรือลงแรงแค่ไหน)</dd>
+          <dt>ซื้อเมื่อ</dt><dd>RSI ต่ำกว่า 30 (ขายกันมากเกินไป)</dd>
+          <dt>ขายเมื่อ</dt><dd>RSI สูงกว่า 70 (ซื้อกันมากเกินไป)</dd></dl></div>
+        <div class="arm-how"><h4><span class="dot" style="background:var(--ta)"></span>นักเทคนิค<span class="kind">กฎ</span></h4>
+          <p class="who">เลียนแบบเทรดเดอร์สายเทคนิค: รอหลายสัญญาณตรงกัน และตั้งจุดตัดขาดทุนทุกครั้ง</p>
+          <dl><dt>ซื้อเมื่อ</dt><dd>เทรนด์ 1 ชม. เป็นขาขึ้น + ราคาย่อลงแตะจุดต่ำ 24 ชม. หรือ RSI ฟื้นกลับเหนือ 40 + แท่งล่าสุดปิดเขียวและปริมาณซื้อขายสูงกว่าปกติ (ถ้ามีข้อมูล) และกำไรเป้าหมายต้องคุ้มค่าธรรมเนียมอย่างน้อย 3 เท่า</dd>
+          <dt>ขายเมื่อ</dt><dd>ราคาลงถึงจุดตัดขาดทุน (ต่ำสุด 2 ชม.) · ขึ้นถึงเป้า 2 เท่าของความเสี่ยง · หรือเทรนด์ 1 ชม. กลับเป็นขาลง</dd></dl></div>
+        <div class="arm-how"><h4><span class="dot" style="background:var(--hold)"></span>ซื้อแล้วถือ<span class="kind">เกณฑ์วัด</span></h4>
+          <p class="who">ซื้อครั้งเดียวตั้งแต่วันแรกแล้วไม่ทำอะไรอีก ใช้เป็นไม้บรรทัด</p>
+          <dl><dt>ทำไมต้องมี</dt><dd>ถ้าสายไหนสู้ "ซื้อแล้วนั่งเฉยๆ" ไม่ได้ แปลว่าการเทรดไปมาไม่ได้ช่วยอะไร</dd>
+          <dt>ค่าธรรมเนียม</dt><dd>จ่ายแค่ตอนซื้อครั้งแรกครั้งเดียว</dd></dl></div>
+      </div>
+      <div class="rules"><span><b>กติกาเดียวกันทุกสาย</b></span><span>เงินตั้งต้น ฿10,000 ต่อสินทรัพย์</span><span>ซื้อหมดหรือขายหมด ไม่มีการชอร์ต</span><span>ค่าธรรมเนียมต่อครั้ง BTC 0.15% · ทอง 0.15% · USD/THB 0.5%</span><span>ตัดสินใจทุก 15 นาที ทองกับ USD/THB หยุดช่วงตลาดปิดเสาร์–อาทิตย์</span></div>
+    </section>
   </div>
 
   <nav class="views" id="views" aria-label="เลือกหน้า">
-    <button data-view="rank">อันดับ</button><button data-view="now">ตอนนี้</button><button data-view="stats">สถิติ</button>
+    <button data-view="rank">อันดับ</button><button data-view="now">ตอนนี้</button><button data-view="stats">สถิติ</button><button data-view="how">วิธีคิด</button>
   </nav>
   <footer>
     <span>บอทเทรดกระดาษ 6 สาย ใช้ราคาตลาดจริง ไม่ใช่เงินจริง · ตัวเลขอัปเดตเองทุก 15 นาที · เวลาไทย</span>
