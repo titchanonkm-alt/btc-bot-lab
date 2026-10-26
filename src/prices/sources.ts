@@ -51,6 +51,13 @@ export async function krakenBtc(fetcher: Fetcher, now: number): Promise<Candle[]
   );
 }
 
+/**
+ * 15-minute candles asked from Twelve Data. It also quotes the closed weekend (dropped below), so the
+ * request must reach far enough back that, even on a Monday morning, more than 50 hours of open market
+ * remain for the technical-analysis arm's 1-hour EMA 50. 800 candles = 200 hours, 152 of them open.
+ */
+export const TWELVE_OUTPUTSIZE = 800;
+
 const TWELVE_SYMBOL: Record<Exclude<AssetId, "BTC">, string> = { XAU: "XAU/USD", USDTHB: "USD/THB" };
 
 /** Twelve Data time_series in UTC. Gold and FX have no central volume, so volume is null. */
@@ -62,7 +69,7 @@ export async function twelveData(
 ): Promise<Candle[]> {
   const url =
     `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(TWELVE_SYMBOL[asset])}` +
-    `&interval=15min&outputsize=300&timezone=UTC&apikey=${encodeURIComponent(apiKey)}`;
+    `&interval=15min&outputsize=${TWELVE_OUTPUTSIZE}&timezone=UTC&apikey=${encodeURIComponent(apiKey)}`;
   const body = (await getJson(fetcher, url)) as {
     status?: string;
     message?: string;

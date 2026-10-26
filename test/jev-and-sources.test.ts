@@ -253,4 +253,25 @@ describe("gold and FX market hours", () => {
     });
     expect(c.map((x) => new Date(x.t).toISOString())).toEqual(["2026-10-23T20:45:00.000Z", "2026-10-26T00:00:00.000Z"]);
   });
+
+  it("leaves the technical-analysis arm enough open-market history on a Monday morning", async () => {
+    const { candlesFor, TWELVE_OUTPUTSIZE } = await import("../src/prices/sources.js");
+    const { taArm } = await import("../src/arms/rules.js");
+    const now = Date.parse("2026-10-26T03:00:00Z"); // Monday 10:00 in Bangkok, 4 hours after the reopen
+    const fetcher: Fetcher = async (url) => {
+      const n = Number(/outputsize=(\d+)/.exec(url)![1]);
+      // Twelve Data quotes every quarter, weekend included, newest first; a gentle uptrend.
+      const values = Array.from({ length: n }, (_, k) => {
+        const t = now - 15 * 60_000 * (k + 1);
+        const p = String(4000 + (n - k) * 0.1);
+        return { datetime: new Date(t).toISOString().slice(0, 19).replace("T", " "), open: p, high: p, low: p, close: p };
+      });
+      return new Response(JSON.stringify({ status: "ok", values }), { status: 200 });
+    };
+    const candles = await candlesFor("XAU", { fetcher, now, twelveDataKey: "k" });
+    expect(TWELVE_OUTPUTSIZE).toBeGreaterThanOrEqual(800);
+    expect(candles.length / 4).toBeGreaterThan(50);
+    const d = await taArm.decide({ candles, holding: false, state: {}, costPerSide: 0.0015 });
+    expect(d.reason).not.toBe("warmup");
+  });
 });
